@@ -4,9 +4,9 @@ import zipfile
 from tqdm import tqdm
 
 
-
 ## SETUP INSTALLATION FOR GOOGLE NQ DATASET FROM THE BEIR REPO
 ## https://github.com/beir-cellar/beir?tab=readme-ov-file
+
 
 def download_and_process(url, output_filename, extract_to_folder):
     """
