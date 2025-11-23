@@ -1,5 +1,60 @@
 # Exploring Tokenization Strategies for Small-Scale Language Models
 
+## Prerequisites
+
+Before you begin, ensure you have the following installed:
+
+- **PostgreSQL** (v18 or latest): [Download here](https://www.postgresql.org/download/)
+- **pgAdmin 4**: [Download here](https://www.pgadmin.org)
+- **uv**: A fast Python package installer and resolver.
+
+## Database Setup
+
+1. Open **pgAdmin 4** (or your preferred SQL client).
+2. Create a new database with the following details:
+   - **Name:** `vectordb`
+   - **Port:** `5432`
+3. Open the **Query Tool** for the `vectordb` database and run the following command to enable vector support:
+
+```sql
+CREATE EXTENSION vector;
+```
+
+## Installation & Usage
+
+This project uses uv for dependency management.
+
+1. Install uv
+
+If you haven't installed uv yet, run the appropriate command for your OS:
+
+**macOS**
+
+```
+brew install uv
+```
+
+**Windows**
+
+```
+winget install --id=astral-sh.uv -e
+```
+2. Setup Project
+
+Sync the environment to install all dependencies:
+
+```
+uv sync
+```
+
+3. Run the Application
+
+```
+uv run main.py
+```
+
+or use jupyter notebook, the uv env its going to appear there too
+
 ## Overview
 Tokenization is a crucial preprocessing step in language modeling, determining how raw text is transformed into units a model can process. This project studies how different tokenization strategies affect the efficiency, cost, and performance of small-scale language models, especially in a Retrieval-Augmented Generation (RAG) setting. We compare tokenizers such as SentencePiece and byte-level tokenization to understand their impact on retrieval accuracy, generation quality, token efficiency, and overall model behavior.
 
