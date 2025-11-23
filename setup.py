@@ -1,50 +1,76 @@
-import urllib.request
 import os
-import gzip
-import shutil
-import sys
+import requests
+import zipfile
+from tqdm import tqdm
 
-def download_simplified_nq():
-    os.makedirs("data", exist_ok=True)
 
-    files = {
-        "train": "https://storage.googleapis.com/natural_questions/v1.0/train/nq-train-00.jsonl.gz",
-        "dev":   "https://storage.googleapis.com/natural_questions/v1.0/dev/nq-dev-00.jsonl.gz"
-    }
+## SETUP INSTALLATION FOR GOOGLE NQ DATASET FROM THE BEIR REPO
+## https://github.com/beir-cellar/beir?tab=readme-ov-file
 
-    for split, url in files.items():
-        gz_path = os.path.join("data", f"{split}.jsonl.gz")
-        json_path = os.path.join("data", f"{split}.jsonl")
 
-        if not os.path.exists(gz_path):
-            print(f"Downloading {split} split...")
-            try:
-                urllib.request.urlretrieve(url, gz_path)
-            except Exception as e:
-                print(f"Failed to download {url}: {e}", file=sys.stderr)
-                continue
-        else:
-            print(f"{split} split already downloaded.")
+def download_and_process(url, output_filename, extract_to_folder):
+    """
+    Downloads a file with a progress bar, extracts it, and deletes the zip.
+    """
+    
+    # --- STEP 1: DOWNLOAD ---
+    print(f"1. Starting download from: {url}")
+    
+    # Establish connection
+    response = requests.get(url, stream=True)
+    total_size = int(response.headers.get('content-length', 0))
+    block_size = 1024 # 1KB
+    
+    # Progress Bar
+    progress_bar = tqdm(
+        total=total_size, 
+        unit='iB', 
+        unit_scale=True,
+        desc="Downloading"
+    )
+    
+    # Writing file
+    with open(output_filename, 'wb') as file:
+        for data in response.iter_content(block_size):
+            progress_bar.update(len(data))
+            file.write(data)
+    progress_bar.close()
+    
+    if total_size != 0 and progress_bar.n != total_size:
+        print("ERROR: Download failed.")
+        return
 
-        if not os.path.exists(json_path):
-            print(f"Extracting {split} split...")
-            try:
-                with gzip.open(gz_path, 'rb') as f_in:
-                    with open(json_path, 'wb') as f_out:
-                        shutil.copyfileobj(f_in, f_out)
-            except Exception as e:
-                print(f"Extraction failed for {gz_path}: {e}", file=sys.stderr)
-                # keep the .gz for debugging / retry
-                continue
+    # --- STEP 2: EXTRACT (UNZIP) ---
+    print(f"\n2. Extracting {output_filename}...")
+    
+    try:
+        # Create folder if it doesn't exist
+        os.makedirs(extract_to_folder, exist_ok=True)
+        
+        with zipfile.ZipFile(output_filename, 'r') as zip_ref:
+            # extractall is the standard method to unzip everything
+            zip_ref.extractall(extract_to_folder) 
+        print("Extraction successful.")
+        
+    except zipfile.BadZipFile:
+        print("Error: The downloaded file is corrupt.")
+        return
 
-            # remove the compressed file after successful extraction
-            try:
-                os.remove(gz_path)
-                print(f"Removed compressed file: {gz_path}")
-            except OSError as e:
-                print(f"Could not remove {gz_path}: {e}", file=sys.stderr)
-        else:
-            print(f"{split} split already extracted.")
+    # --- STEP 3: CLEANUP (DELETE ZIP) ---
+    print(f"3. Deleting temporary file: {output_filename}")
+    try:
+        os.remove(output_filename)
+        print("Cleanup successful.")
+    except OSError as e:
+        print(f"Error deleting file: {e}")
+
+    print(f"\n--- PROCESS COMPLETED ---")
+    print(f"Data is ready in folder: {extract_to_folder}")
 
 if __name__ == "__main__":
-    download_simplified_nq()
+    # Configuration
+    dataset_url = "https://public.ukp.informatik.tu-darmstadt.de/thakur/BEIR/datasets/nq.zip"
+    zip_name = "nq.zip"
+    output_folder = "data" # Where the data will be extracted
+    
+    download_and_process(dataset_url, zip_name, output_folder)
