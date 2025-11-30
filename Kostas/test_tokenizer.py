@@ -1,13 +1,39 @@
-from tokenizers.BPE import CustomBPETokenizer
+from tokenizers_list.BPE import CustomBPETokenizer
+from tokenizers_list.Canine import CanineTokenizer
+from tokenizers_list.ByT5 import ByT5Tokenizer
+
+
+def main():
+    sample = "O gazis einai gay kai tou aresoun ta paidia."
+
+    # ---- BPE ----
+    print("=== Custom BPE ===")
+    bpe = CustomBPETokenizer()
+    bpe.load("bpe_tokenizer.json")  # path to your saved BPE model
+    bpe_ids = bpe.encode(sample)
+    print("BPE ids:     ", bpe_ids)
+    print("BPE decoded: ", bpe.decode(bpe_ids))
+    print("BPE vocab size:", len(bpe_ids))
+    print()
+
+    # ---- CANINE ----
+    print("=== CANINE (google/canine-s) ===")
+    canine = CanineTokenizer()
+    canine_ids = canine.encode(sample)
+    print("CANINE ids (len):", len(canine_ids))
+    print("CANINE ids (head):", canine_ids[:20])
+    print("CANINE decoded:", canine.decode(canine_ids))
+    print()
+
+    # ---- ByT5 ----
+    print("=== ByT5 (google/byt5-small) ===")
+    byt5 = ByT5Tokenizer()
+    byt5_ids = byt5.encode(sample)
+    print("ByT5 ids (len):", len(byt5_ids))
+    print("ByT5 ids (head):", byt5_ids[:20])
+    print("ByT5 decoded:", byt5.decode(byt5_ids))
+    print()
+
 
 if __name__ == "__main__":
-    tok = CustomBPETokenizer()
-    #tok.load("my_bpe_tokenizer.json")
-    tok.load("bpe_tokenizer.json")
-
-    sample = "Eimai o kostis kai thelo na fame ena megalo souvlaki."
-    ids = tok.encode(sample)
-    print("Token IDs:", ids)
-
-    decoded = tok.decode(ids)
-    print("Decoded:", decoded)
+    main()
