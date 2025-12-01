@@ -1,0 +1,7 @@
+transformers>=4.57.0
+tokenizers>=0.22.0
+datasets>=4.4.1
+torch>=2.2.0
+matplotlib>=3.8.0
+pandas>=2.1.0
+zipp==3.19.2
