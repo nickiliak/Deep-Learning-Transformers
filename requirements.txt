@@ -1,0 +1,11 @@
+sqlmodel
+sqlalchemy
+pgvector
+transformers
+sentence-transformers
+torch==2.2.0
+tqdm
+jupyter
+nbconvert
+psycopg[binary]
+python-dotenv
