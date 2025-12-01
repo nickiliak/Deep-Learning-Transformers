@@ -1,7 +1,13 @@
+import sys
+import os
+
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(current_dir)
+sys.path.insert(0, parent_dir)
+from our_tokenizers.BPE import CustomBPETokenizer
+
 import csv
 from transformers import AutoTokenizer
-from tokenizers_list.BPE import CustomBPETokenizer
-
 
 # -----------------------------
 # Load tokenizers
@@ -9,7 +15,7 @@ from tokenizers_list.BPE import CustomBPETokenizer
 
 # 1. Load your custom BPE class + the vocabulary you trained
 bpe = CustomBPETokenizer()
-bpe.load("bpe_tokenizer.json")  # <--- your saved merges + vocab
+bpe.load("../vocabularies/bpe_tokenizer.json")  # <--- your saved merges + vocab
 
 # 2. Load CANINE (pretrained, fixed character-level tokenizer)
 canine_tok = AutoTokenizer.from_pretrained("google/canine-s")
@@ -45,7 +51,7 @@ with open("tokenizer_comparison.csv", "w", newline="", encoding="utf-8") as csv_
     # -------------------------
     # Stream over corpus
     # -------------------------
-    with open("s250219/corpus_test.txt", "r", encoding="utf-8") as f:
+    with open("corpus.txt", "r", encoding="utf-8") as f:
         for line_id, line in enumerate(f):
 
             line = line.strip()

@@ -3,3 +3,7 @@ data
 .venv
 temp
 .DS_Store
+
+# pycaches
+tokenization/our_tokenizers/__pycache__
+tokenization/evaluation/*.csv
