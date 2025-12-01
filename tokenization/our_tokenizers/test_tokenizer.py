@@ -1,6 +1,6 @@
-from tokenizers_list.BPE import CustomBPETokenizer
-from tokenizers_list.Canine import CanineTokenizer
-from tokenizers_list.ByT5 import ByT5Tokenizer
+from BPE import CustomBPETokenizer
+from Canine import CanineTokenizer
+from ByT5 import ByT5Tokenizer
 
 
 def main():
@@ -9,7 +9,7 @@ def main():
     # ---- BPE ----
     print("=== Custom BPE ===")
     bpe = CustomBPETokenizer()
-    bpe.load("bpe_tokenizer.json")  # path to your saved BPE model
+    bpe.load("../vocabularies/bpe_tokenizer.json")  # path to your saved BPE model
     bpe_ids = bpe.encode(sample)
     print("BPE ids:     ", bpe_ids)
     print("BPE decoded: ", bpe.decode(bpe_ids))

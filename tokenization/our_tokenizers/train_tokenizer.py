@@ -1,6 +1,6 @@
 from datasets import load_dataset
 import os
-from tokenizers_list.BPE import CustomBPETokenizer
+from BPE import CustomBPETokenizer
 # ------------------------------------------------------------
 # STEP 1 — Build corpus.txt from C4
 # ------------------------------------------------------------

@@ -14,11 +14,12 @@ services:
     image: python:3.11-alpine
     depends_on:
       - db
+    # Mount repository root so the .env is created at repo root (not inside setup/)
     volumes:
-      - ./:/workspace
+      - ../:/workspace
     working_dir: /workspace
     entrypoint: ["sh", "-c"]
-    command: ["sh", "-c", "sleep 5; echo \"DATABASE_URL=postgresql+psycopg://nick:secret@localhost:5432/vectordb\" > .env; echo WROTE .env"]
+    command: ["sh", "-c", "sleep 5; echo \"DATABASE_URL=postgresql+psycopg://nick:secret@localhost:5433/vectordb\" > .env; echo WROTE .env"]
 
 volumes:
   pgdata: {}

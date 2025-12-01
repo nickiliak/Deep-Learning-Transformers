@@ -1,0 +1,22 @@
+# Ignore data and environment files to keep build context small
+data/
+data_filtered/
+.env
+.venv/
+venv/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.frank/
+.trash/
+# caches
+.cache/
+transformers_cache/
+sentence_transformers_cache/
+# git
+.git/
+# model artifacts
+*.ckpt
+*.pt
+*.pth
+*.safetensors
