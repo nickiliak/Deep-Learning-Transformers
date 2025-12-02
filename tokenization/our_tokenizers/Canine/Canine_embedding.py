@@ -1,6 +1,6 @@
 import torch
 from typing import List
-from transformers import AutoModel, AutoTokenizer
+from transformers import AutoModel
 from .Canine_tokenization import CanineTokenizer
 
 
@@ -20,7 +20,7 @@ class CanineEmbedder:
         print(f"Using device: {self.device}")
         
         canine_tokenizer = CanineTokenizer(model_id)
-        self.tokenizer = AutoTokenizer.from_pretrained(model_id)
+        self.tokenizer = canine_tokenizer.tokenizer
         self.model = AutoModel.from_pretrained(
             model_id,
             use_safetensors=True  # ADD THIS LINE
@@ -73,6 +73,38 @@ class CanineEmbedder:
         
         # Return as Python list
         return sentence_embeddings[0].cpu().tolist()
+    
+    def generate_embeddings_batch(self, texts: List[str]) -> List[List[float]]:
+        """
+        Generate embeddings for multiple texts simultaneously (GPU batching).
+        
+        Args:
+            texts: List of input strings
+            
+        Returns:
+            List of embedding vectors (each is 768 floats)
+        """
+        # A. Tokenize all texts at once (automatic padding to longest in batch)
+        inputs = self.tokenizer(
+            texts,
+            padding=True,
+            truncation=True,
+            max_length=2048,
+            return_tensors='pt'
+        ).to(self.device)
+        
+        # B. Batch Inference
+        with torch.no_grad():
+            outputs = self.model(**inputs)
+        
+        # C. Pooling for all sequences
+        sentence_embeddings = self._mean_pooling(outputs, inputs['attention_mask'])
+        
+        # D. Normalize all embeddings
+        sentence_embeddings = torch.nn.functional.normalize(sentence_embeddings, p=2, dim=1)
+        
+        # Return as list of lists
+        return sentence_embeddings.cpu().tolist()
     
     @property
     def embedding_dimension(self) -> int:
