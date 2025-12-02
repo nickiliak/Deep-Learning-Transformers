@@ -4,7 +4,12 @@ data
 temp
 .DS_Store
 
-# pycaches
-tokenization/our_tokenizers/__pycache__
+# Python cache files (recursive)
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Evaluation outputs
 tokenization/evaluation/*.csv
-tokenization/__pycache__
