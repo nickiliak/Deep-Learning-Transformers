@@ -1,95 +1,142 @@
 # Exploring Tokenization Strategies for Small-Scale Language Models
 
-## Prerequisites
+## Project Overview
 
-Before you begin, ensure you have the following installed:
+This project compares different tokenization strategies (byte-level, character-level, and subword) in the context of semantic search and retrieval. We use three different transformer models with their respective tokenization approaches:
 
-- **PostgreSQL** (v18 or latest): [Download here](https://www.postgresql.org/download/)
-- **pgAdmin 4**: [Download here](https://www.pgadmin.org)
-- **uv**: A fast Python package installer and resolver.
+- **BERT (MiniLM)**: WordPiece tokenization (384 dimensions)
+- **ByT5**: Byte-level tokenization (1472 dimensions)
+- **Canine**: Character-level tokenization (768 dimensions)
 
-## Database Setup
+The pipeline generates embeddings for a document corpus using each model, stores them in a PostgreSQL database with pgvector, and provides tools to evaluate retrieval performance across tokenization strategies.
 
-1. Open **pgAdmin 4** (or your preferred SQL client).
-2. Create a new database with the following details:
-   - **Name:** `vectordb`
-   - **Port:** `5432`
-3. Open the **Query Tool** for the `vectordb` database and run the following command to enable vector support:
-
-```sql
-CREATE EXTENSION vector;
-```
-
-## Installation & Usage
-
-This project uses uv for dependency management.
-
-1. Install uv
-
-If you haven't installed uv yet, run the appropriate command for your OS:
-
-**macOS**
+## Repository Structure
 
 ```
-brew install uv
+pipeline/                    # Main embedding generation pipeline
+  └── pipeline.ipynb        # Notebook to generate and store embeddings
+tokenization/
+  ├── our_tokenizers/       # Embedder implementations
+  │   ├── ByT5/            # Byte-level tokenization
+  │   ├── Canine/          # Character-level tokenization
+  │   └── BPE/             # Subword tokenization (BERT)
+  └── evaluation/          # Tools to evaluate retrieval performance
+      ├── evaluate_retrieval.py  # Comprehensive comparison
+      └── query_demo.py          # Interactive search demo
+setup/
+  ├── setup.py             # Downloads Natural Questions dataset
+  └── docker-compose.yml   # PostgreSQL + pgvector database
+data/                      # Dataset storage (created by setup.py)
 ```
 
-**Windows**
+## Setup Instructions
 
-```
-winget install --id=astral-sh.uv -e
-```
-2. Setup Project
+### 1. Install Prerequisites
 
-Sync the environment to install all dependencies:
+**uv (Python Package Manager)**
 
-```
+This project uses [uv](https://github.com/astral-sh/uv) for fast, reliable dependency management.
+
+- **macOS**: `brew install uv`
+- **Windows**: `winget install --id=astral-sh.uv -e`
+- **Linux**: `curl -LsSf https://astral.sh/uv/install.sh | sh`
+
+**Docker Desktop**
+
+Required to run the PostgreSQL database locally.
+
+- Download and install: [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+- Start Docker Desktop after installation
+
+### 2. Install Python Dependencies
+
+From the repository root, sync the environment:
+
+```bash
 uv sync
 ```
 
-3. Run the Application
+This creates a virtual environment and installs all required packages (PyTorch, Transformers, pgvector, etc.).
 
+### 3. Download Dataset
+
+Run the setup script to download the Natural Questions dataset from BEIR:
+
+```bash
+cd setup
+uv run setup.py
 ```
-uv run main.py
+
+This downloads and extracts the NQ dataset (~500MB) into the `data/` folder. The dataset contains queries and a document corpus for evaluation.
+
+### 4. Start Database
+
+Spin up PostgreSQL with pgvector extension:
+
+```bash
+cd setup
+docker-compose up -d
 ```
 
-or use jupyter notebook, the uv env its going to appear there too
+This creates:
+- PostgreSQL database on `localhost:5433`
+- Enables pgvector extension for similarity search
+- Creates a `.env` file at the repository root with connection string
 
-## Overview
-Tokenization is a crucial preprocessing step in language modeling, determining how raw text is transformed into units a model can process. This project studies how different tokenization strategies affect the efficiency, cost, and performance of small-scale language models, especially in a Retrieval-Augmented Generation (RAG) setting. We compare tokenizers such as SentencePiece and byte-level tokenization to understand their impact on retrieval accuracy, generation quality, token efficiency, and overall model behavior.
+To stop the database: `docker-compose down`
 
-## Motivation
-Tokenization affects model performance both directly and indirectly. A tokenizer that produces too many tokens increases computational cost, slows down training and inference, and raises the overall resource requirements. Because small-scale models are more sensitive to token count and efficiency, selecting the right tokenization strategy can significantly improve speed, cost, and linguistic quality. This project aims to uncover these trade-offs.
+To view logs: `docker-compose logs -f`
 
-## Background
-This project evaluates how multiple tokenization techniques impact the end-to-end performance of a RAG system using a small transformer-based model. The study includes:
-- Training a transformer model on question-answering data
-- Implementing retrieval and generation components
-- Comparing SentencePiece, byte-level tokenizers, and potentially others
-- Measuring their effects on:
-  - Retrieval accuracy
-  - Generation quality
-  - Model efficiency (tokens per input, inference time)
-  - Computational cost
+## Usage
 
-Beyond tokenization, the project also explores practical aspects of building and evaluating RAG systems for smaller-scale models.
+### Generate Embeddings
 
-## Project Milestones
-1. Dataset Selection: Identify the most appropriate dataset(s) to support the project goals.
-2. Model Training: Train a transformer model using Wikipedia QA data.
-3. RAG Integration: Integrate the trained transformer into a Retrieval-Augmented Generation workflow.
-4. Evaluation: Assess tokenization efficiency, computational cost, and generation quality across tokenizers.
-5. Reporting & Visualization: Compile findings with visualizations, comparisons, and key conclusions.
+Open `pipeline/pipeline.ipynb` in VS Code or Jupyter. The notebook allows you to:
 
-## Datasets Explored
-- SQuAD (Stanford Question Answering Dataset): https://rajpurkar.github.io/SQuAD-explorer/
-- Natural Questions (Google Research): https://github.com/google-research-datasets/natural-questions
-- TyDi QA: https://github.com/google-research-datasets/tydiqa
+1. Select which embedder to use (ByT5, Canine, or BERT)
+2. Configure the model ID and vector dimensions
+3. Run the pipeline to generate embeddings for all documents
+4. Store embeddings in PostgreSQL with pgvector indexing
 
-## Expected Outcomes
-By the end of the project, we aim to deliver:
-- A comparison of tokenization techniques for small LMs
-- Quantitative metrics on efficiency, generation quality, and retrieval accuracy
-- Insights into optimal tokenizer selection for constrained models
-- A functioning RAG pipeline with multiple tokenizer configurations
-- Clear visualizations and a final written report documenting findings
+Run the pipeline separately for each model to populate the database with all three embedding sets.
+
+### Evaluate Retrieval Performance
+
+After generating embeddings, use the evaluation tools:
+
+**Interactive Search** (test a single query):
+```bash
+cd tokenization/evaluation
+uv run query_demo.py "your search query here"
+```
+
+**Comprehensive Evaluation** (compare all models):
+```bash
+cd tokenization/evaluation
+uv run evaluate_retrieval.py
+```
+
+This compares all three tokenization strategies using metrics like Recall@k, MRR (Mean Reciprocal Rank), and query latency.
+
+## Project Background
+
+Tokenization is a crucial preprocessing step that determines how text is split into units a model can process. This project investigates how different tokenization approaches affect retrieval performance:
+
+- **Byte-level (ByT5)**: No vocabulary limit, handles any text including rare characters and misspellings
+- **Character-level (Canine)**: Works at character granularity, robust to typos and morphological variations
+- **Subword (BERT)**: Balances vocabulary size with linguistic meaning using WordPiece tokenization
+
+### Research Questions
+
+1. Does more granular tokenization (bytes/characters) improve retrieval for out-of-vocabulary terms?
+2. How do embedding dimensions affect retrieval quality across tokenization strategies?
+3. What are the trade-offs between tokenization granularity, computational cost, and accuracy?
+
+### Dataset
+
+We use the **Natural Questions** dataset from BEIR:
+- 3.6M+ Wikipedia passages
+- 3,452 real Google search queries
+- Ground truth relevance judgments for evaluation
+
+Source: [BEIR Benchmark](https://github.com/beir-cellar/beir)
