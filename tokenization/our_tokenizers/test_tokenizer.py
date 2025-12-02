@@ -1,6 +1,6 @@
-from BPE import CustomBPETokenizer
-from Canine import CanineTokenizer
-from ByT5 import ByT5Tokenizer
+from tokenization.our_tokenizers.BPE.BPE_tokenization import CustomBPETokenizer
+from tokenization.our_tokenizers.Canine.Canine_tokenization import CanineTokenizer
+from tokenization.our_tokenizers.ByT5.ByT5_tokenization import ByT5Tokenizer
 
 
 def main():

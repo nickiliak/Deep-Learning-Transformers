@@ -7,3 +7,4 @@ temp
 # pycaches
 tokenization/our_tokenizers/__pycache__
 tokenization/evaluation/*.csv
+tokenization/__pycache__
