@@ -3,7 +3,6 @@
 from typing import List, Union
 from transformers import AutoTokenizer
 
-
 class ByT5Tokenizer:
     """
     Simple wrapper around the pretrained ByT5 tokenizer.
