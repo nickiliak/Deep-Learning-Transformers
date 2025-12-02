@@ -21,7 +21,10 @@ class ByT5Embedder:
         # Use the underlying HuggingFace tokenizer from your wrapper
         byt5_tokenizer = ByT5Tokenizer(model_id)
         self.tokenizer = byt5_tokenizer.tokenizer  # Get the AutoTokenizer inside
-        self.model = AutoModel.from_pretrained(model_id).to(self.device)
+        self.model = AutoModel.from_pretrained(
+            model_id,
+            use_safetensors=True  # ADD THIS LINE
+        ).to(self.device)
         
         # ByT5 is encoder-decoder; we only use encoder for embeddings
         self.model.eval()  # Set to evaluation mode
@@ -78,6 +81,42 @@ class ByT5Embedder:
         
         # Return as Python list
         return sentence_embeddings[0].cpu().tolist()
+    
+    def generate_embeddings_batch(self, texts: List[str]) -> List[List[float]]:
+        """
+        Generate embeddings for multiple texts simultaneously (GPU batching).
+        
+        Args:
+            texts: List of input strings
+            
+        Returns:
+            List of embedding vectors (each is 1472 floats)
+        """
+        # A. Tokenize all texts at once (automatic padding to longest in batch)
+        inputs = self.tokenizer(
+            texts,
+            padding=True,
+            truncation=True,
+            max_length=512,
+            return_tensors='pt'
+        ).to(self.device)
+        
+        # B. Batch Inference
+        with torch.no_grad():
+            outputs = self.model.encoder(
+                input_ids=inputs['input_ids'],
+                attention_mask=inputs['attention_mask'],
+                return_dict=True
+            )
+        
+        # C. Pooling for all sequences
+        sentence_embeddings = self._mean_pooling(outputs, inputs['attention_mask'])
+        
+        # D. Normalize all embeddings
+        sentence_embeddings = torch.nn.functional.normalize(sentence_embeddings, p=2, dim=1)
+        
+        # Return as list of lists
+        return sentence_embeddings.cpu().tolist()
     
     @property
     def embedding_dimension(self) -> int:

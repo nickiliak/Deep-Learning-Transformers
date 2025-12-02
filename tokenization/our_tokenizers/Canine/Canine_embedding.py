@@ -1,6 +1,6 @@
 import torch
 from typing import List
-from transformers import AutoModel
+from transformers import AutoModel, AutoTokenizer
 from .Canine_tokenization import CanineTokenizer
 
 
@@ -20,9 +20,11 @@ class CanineEmbedder:
         print(f"Using device: {self.device}")
         
         canine_tokenizer = CanineTokenizer(model_id)
-        self.tokenizer = canine_tokenizer.tokenizer  # Get the AutoTokenizer inside
-        self.model = AutoModel.from_pretrained(model_id).to(self.device)
-        
+        self.tokenizer = AutoTokenizer.from_pretrained(model_id)
+        self.model = AutoModel.from_pretrained(
+            model_id,
+            use_safetensors=True  # ADD THIS LINE
+        ).to(self.device)
         self.model.eval()  # Set to evaluation mode
     
     def _mean_pooling(self, model_output, attention_mask):
