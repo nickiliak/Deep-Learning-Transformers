@@ -4,12 +4,6 @@ version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
-
-[[tool.uv.index]]
-name = "pytorch-nightly"
-url = "https://download.pytorch.org/whl/nightly/cu121"
-explicit = true
-
 dependencies = [
     "annotated-types==0.7.0",
     "anyio==4.11.0",
