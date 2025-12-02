@@ -1,7 +1,7 @@
 import torch
 from typing import List
 from transformers import AutoModel
-from .Canine_embedding import CanineEmbedder
+from .Canine_tokenization import CanineTokenizer
 
 
 class CanineEmbedder:
@@ -19,8 +19,8 @@ class CanineEmbedder:
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         print(f"Using device: {self.device}")
         
-        canine_embedder = CanineEmbedder(model_id)
-        self.tokenizer = CanineEmbedder.tokenizer  # Get the AutoTokenizer inside
+        canine_tokenizer = CanineTokenizer(model_id)
+        self.tokenizer = canine_tokenizer.tokenizer  # Get the AutoTokenizer inside
         self.model = AutoModel.from_pretrained(model_id).to(self.device)
         
         self.model.eval()  # Set to evaluation mode
