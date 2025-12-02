@@ -4,6 +4,12 @@ version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
+
+[[tool.uv.index]]
+name = "pytorch-nightly"
+url = "https://download.pytorch.org/whl/nightly/cu121"
+explicit = true
+
 dependencies = [
     "annotated-types==0.7.0",
     "anyio==4.11.0",
@@ -73,6 +79,8 @@ dependencies = [
     "sympy==1.14.0",
     "tokenizers>=0.22.0",
     "torch>=2.6.0",
+    "torchvision",
+    "torchaudio",
     "tornado>=6.5.2",
     "tqdm==4.67.1",
     "traitlets>=5.14.3",
