@@ -25,6 +25,7 @@ from tokenization.our_tokenizers.ByT5.ByT5_embedding import ByT5Embedder
 from tokenization.our_tokenizers.Canine.Canine_embedding import CanineEmbedder
 from tokenization.our_tokenizers.BPE.BPE_embedding import BPEEmbedder
 from tokenization.our_tokenizers.BPE.BPEpre import BPEPretrainedEmbedder
+from tokenization.baseline.BERT.bert_embeddings import BertEmbedder
 
 # Configuration
 DATABASE_URL = os.environ.get(
@@ -35,14 +36,14 @@ QUERIES_PATH = os.path.join(repo_root, "data_filtered", "queries_filtered.jsonl"
 
 # Model configurations
 MODELS = [
-    {
-        'name': 'ByT5',
-        'embedder_class': ByT5Embedder,
-        'model_id': 'google/byt5-small',
-        'table_name': 'byt5_small',
-        'vector_dim': 1472,
-        'is_bpe': False
-    },
+    # {
+    #     'name': 'ByT5',
+    #     'embedder_class': ByT5Embedder,
+    #     'model_id': 'google/byt5-small',
+    #     'table_name': 'byt5_small',
+    #     'vector_dim': 1472,
+    #     'is_bpe': False
+    # },
     {
         'name': 'Canine',
         'embedder_class': CanineEmbedder,
@@ -51,19 +52,27 @@ MODELS = [
         'vector_dim': 768,
         'is_bpe': False
     },
-    {
-        'name': 'BPE',
-        'embedder_class': BPEEmbedder,
-        'bpe_model_path': os.path.join(repo_root, 'tokenization', 'vocabularies', 'bpe_tokenizer.json'),
-        'table_name': 'BPE',
-        'vector_dim': 768,  # BPE uses d_model=768
-        'is_bpe': True
-    },
+    # {
+    #     'name': 'BPE',
+    #     'embedder_class': BPEEmbedder,
+    #     'bpe_model_path': os.path.join(repo_root, 'tokenization', 'vocabularies', 'bpe_tokenizer.json'),
+    #     'table_name': 'BPE',
+    #     'vector_dim': 768,  # BPE uses d_model=768
+    #     'is_bpe': True
+    # },
     {   'name': 'BPE_Pretrained',
         'embedder_class': BPEPretrainedEmbedder,
         'model_id': 'roberta-base',
-        'table_name': 'BPE_Pretrained',
+        'table_name': 'BPE',
         'vector_dim': 768,
+        'is_bpe': False
+    },
+    {
+        'name': 'BERT-MiniLM',
+        'embedder_class': BertEmbedder,
+        'model_id': 'sentence-transformers/all-MiniLM-L6-v2',
+        'table_name': 'bert_minilm',
+        'vector_dim': 384,
         'is_bpe': False
     }
 ]
