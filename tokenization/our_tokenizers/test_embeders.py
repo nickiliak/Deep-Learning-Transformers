@@ -1,9 +1,10 @@
 from BPE.BPE_embedding import BPEEmbedder
 from Canine.Canine_embedding import CanineEmbedder
-
+from BPE.BPEpre import BPEPretrainedEmbedder
 text = "A quick brown fox jumps over the lazy dog."
 
-bpe = BPEEmbedder("tokenization\\vocabularies\\bpe_tokenizer.json")
+#bpe = BPEEmbedder("tokenization\\vocabularies\\bpe_tokenizer.json")
+bpe = BPEPretrainedEmbedder("roberta-base")
 canine = CanineEmbedder()
 
 v1 = bpe.generate_embedding(text)

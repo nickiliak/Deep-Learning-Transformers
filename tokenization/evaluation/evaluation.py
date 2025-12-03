@@ -24,7 +24,7 @@ if repo_root not in sys.path:
 from tokenization.our_tokenizers.ByT5.ByT5_embedding import ByT5Embedder
 from tokenization.our_tokenizers.Canine.Canine_embedding import CanineEmbedder
 from tokenization.our_tokenizers.BPE.BPE_embedding import BPEEmbedder
-
+from tokenization.our_tokenizers.BPE.BPEpre import BPEPretrainedEmbedder
 
 # Configuration
 DATABASE_URL = os.environ.get(
@@ -58,6 +58,13 @@ MODELS = [
         'table_name': 'BPE',
         'vector_dim': 768,  # BPE uses d_model=768
         'is_bpe': True
+    },
+    {   'name': 'BPE_Pretrained',
+        'embedder_class': BPEPretrainedEmbedder,
+        'model_id': 'roberta-base',
+        'table_name': 'BPE_Pretrained',
+        'vector_dim': 768,
+        'is_bpe': False
     }
 ]
 
