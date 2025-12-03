@@ -60,11 +60,19 @@ This creates a virtual environment and installs all required packages (PyTorch, 
 
 **Important: Install PyTorch with CUDA support:**
 
+in windows:
+
 ```bash
 uv pip install --pre torch torchvision torchaudio --index-url https://download.pytorch.org/whl/nightly/cu121
 ```
 
 This installs PyTorch 2.6+ with CUDA 12.1 support (required for GPU acceleration and security fixes).
+
+mac silicon:
+
+```
+uv pip install --pre torch torchvision torchaudio --index-url https://download.pytorch.org/whl/nightly/cpu
+```
 
 ### 3. Download Dataset
 
