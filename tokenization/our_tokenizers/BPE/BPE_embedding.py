@@ -2,128 +2,116 @@ from .BPE_tokenization import CustomBPETokenizer
 import torch
 import torch.nn as nn 
 from typing import List
+from transformers import RobertaModel
 VOCAB_PATH = "tokenization\\vocabularies\\CustomBPETokenizer.json"
 
-def load_CustomBPETokenizer(model_path: str) -> CustomBPETokenizer:
+class BPEEmbedder:
     """
-    Load your trained BPE tokenizer from JSON.
-    """
-    tokenizer = CustomBPETokenizer()
-    tokenizer.load(model_path)
-    return tokenizer
+        - generate_embedding(text) -> List[float]
+        - generate_embeddings_batch(texts) -> List[List[float]]
+        - embedding_dimension property
 
-
-
-class BPEEmbedder(nn.Module):
-    """
-    Embedder using your custom BPE tokenizer + a lightweight LSTM encoder.
-
-    Produces a fixed-size embedding (default: 768 dimensions),
-    just like the CANINE embedder, enabling homogeneous downstream processing.
+        BPE Embedder using a custom BPE tokenizer and a pretrained Roberta encoder.
     """
 
     def __init__(
         self,
         bpe_model_path: str = VOCAB_PATH,
-        d_model: int = 768,
-        max_length: int = 2048,
+        max_length: int = 512,
+        model_name: str = "roberta-base",
     ):
-        super().__init__()
+        print(f"--- Loading BPE Embedder (pretrained {model_name}) ---")
 
-        print("--- Loading BPE tokenizer and building embedder ---")
-
-        self.device = "cuda" if torch.cuda.is_available() else ("mps" if torch.backends.mps.is_available() else "cpu")
-        print(f"Using device: {self.device}")
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        print("Device:", self.device)
 
         # -----------------------------
-        # Load trained BPE tokenizer
+        # Load your custom BPE tokenizer
         # -----------------------------
         self.tokenizer = CustomBPETokenizer()
         self.tokenizer.load(bpe_model_path)
 
-        # -----------------------------
-        # Build vocabulary & embedding
-        # -----------------------------
+        # Build vocab & pad token
         vocab = self.tokenizer.build_vocab()
         vocab_size = max(vocab.keys()) + 1
-        self.pad_id = vocab_size          # reserve last id for PAD
-        num_embeddings = vocab_size + 1   # +1 for PAD
+        self.pad_id = vocab_size
+        self.vocab_size = vocab_size + 1
 
-        self.d_model = d_model
         self.max_length = max_length
 
-        # Learnable embedding layer
-        self.embedding = nn.Embedding(
-            num_embeddings=num_embeddings,
-            embedding_dim=d_model,
-        )
-
         # -----------------------------
-        # LSTM encoder (1-layer)
+        # Load pretrained encoder
         # -----------------------------
-        self.lstm = nn.LSTM(
-            input_size=d_model,
-            hidden_size=d_model,
-            num_layers=1,
-            batch_first=True,
-            bidirectional=False,
-        )
+        print(f"Loading pretrained encoder: {model_name}")
+        self.encoder = RobertaModel.from_pretrained(model_name)
+        self.encoder.to(self.device)
+        self.encoder.eval()
 
-        self.to(self.device)
-        self.eval()
-    def _encode_and_pad(self, texts: List[str]) -> torch.Tensor:
-        """
-        Tokenize and pad/truncate to fixed max_length.
-        Returns: LongTensor (batch_size, max_length)
-        """
-        all_ids = []
-        for text in texts:
-            ids = self.tokenizer.encode(text)
-            if len(ids) > self.max_length:
-                ids = ids[: self.max_length]
-            else:
-                ids = ids + [self.pad_id] * (self.max_length - len(ids))
-            all_ids.append(ids)
+        # Replace tokenizer's embedding with new embedding tied to your vocab
+        hidden = self.encoder.config.hidden_size
+        self.encoder.embeddings.word_embeddings = nn.Embedding(
+            num_embeddings=self.vocab_size,
+            embedding_dim=hidden,
+        ).to(self.device)
 
-        return torch.tensor(all_ids, dtype=torch.long, device=self.device)
-    def _mean_pooling(self, embeddings, attention_mask):
-        mask = attention_mask.unsqueeze(-1).float()
-        summed = torch.sum(embeddings * mask, dim=1)
-        lengths = torch.clamp(mask.sum(dim=1), min=1e-9)
-        return summed / lengths
-    def generate_embeddings_batch(self, texts: List[str]) -> List[List[float]]:
-        """
-        Convert a batch of texts into fixed-size embeddings.
-        Output: List of 768-dim vectors (float lists)
-        """
-        self.eval()
-
-        # 1. Encode + pad
-        input_ids = self._encode_and_pad(texts)
-        attention_mask = (input_ids != self.pad_id).long()
-
-        # 2. Pass through embedding + LSTM
-        with torch.no_grad():
-            token_embs = self.embedding(input_ids)
-            outputs, _ = self.lstm(token_embs)
-
-        # 3. Mean pooling
-        pooled = self._mean_pooling(outputs, attention_mask)
-
-        # 4. Normalize
-        normed = torch.nn.functional.normalize(pooled, p=2, dim=1)
-
-        return normed.cpu().tolist()
+        print(f"Embedding dimension: {hidden}")
+        self.hidden = hidden
 
     # -----------------------------------------------------------
-    # Single text embedding
+    # Encode + pad
+    # -----------------------------------------------------------
+    def _encode_and_pad(self, texts: List[str]):
+        all_ids = []
+        for t in texts:
+            ids = self.tokenizer.encode(t)
+
+            if len(ids) > self.max_length:
+                ids = ids[:self.max_length]
+            else:
+                ids = ids + [self.pad_id] * (self.max_length - len(ids))
+
+            all_ids.append(ids)
+
+        input_ids = torch.tensor(all_ids, dtype=torch.long, device=self.device)
+        attention_mask = (input_ids != self.pad_id).long()
+
+        return input_ids, attention_mask
+
+    # -----------------------------------------------------------
+    # Mean pooling (same as CANINE)
+    # -----------------------------------------------------------
+    def _mean_pool(self, last_hidden, mask):
+        mask = mask.unsqueeze(-1).float()
+        summed = (last_hidden * mask).sum(dim=1)
+        counts = torch.clamp(mask.sum(dim=1), min=1e-9)
+        return summed / counts
+
+    # -----------------------------------------------------------
+    # Batch embeddings
+    # -----------------------------------------------------------
+    def generate_embeddings_batch(self, texts: List[str]) -> List[List[float]]:
+        input_ids, mask = self._encode_and_pad(texts)
+
+        with torch.no_grad():
+            outputs = self.encoder(
+                input_ids=input_ids,
+                attention_mask=mask,
+            )
+
+        pooled = self._mean_pool(outputs.last_hidden_state, mask)
+        normalized = torch.nn.functional.normalize(pooled, p=2, dim=1)
+
+        return normalized.cpu().tolist()
+
+    # -----------------------------------------------------------
+    # Single embedding
     # -----------------------------------------------------------
     def generate_embedding(self, text: str) -> List[float]:
         return self.generate_embeddings_batch([text])[0]
 
     # -----------------------------------------------------------
-    # Property: embedding dimensionality
+    # Dimension property
     # -----------------------------------------------------------
     @property
     def embedding_dimension(self) -> int:
-        return self.d_model
+        return self.hidden
