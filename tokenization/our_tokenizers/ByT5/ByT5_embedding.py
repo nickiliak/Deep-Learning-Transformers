@@ -15,7 +15,7 @@ class ByT5Embedder:
     
     def __init__(self, model_id: str = "google/byt5-small"):
         print(f"--- Loading ByT5 Model: {model_id} ---")
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.device = "cuda" if torch.cuda.is_available() else ("mps" if torch.backends.mps.is_available() else "cpu")
         print(f"Using device: {self.device}")
         
         # Use the underlying HuggingFace tokenizer from your wrapper

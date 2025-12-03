@@ -32,7 +32,7 @@ class BPEEmbedder(nn.Module):
 
         print("--- Loading BPE tokenizer and building embedder ---")
 
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.device = "cuda" if torch.cuda.is_available() else ("mps" if torch.backends.mps.is_available() else "cpu")
         print(f"Using device: {self.device}")
 
         # -----------------------------
