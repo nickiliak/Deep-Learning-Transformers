@@ -3,6 +3,7 @@ import torch
 import torch.nn as nn 
 from typing import List
 from transformers import RobertaModel
+import os
 VOCAB_PATH = "tokenization\\vocabularies\\CustomBPETokenizer.json"
 
 class BPEEmbedder:
@@ -18,9 +19,15 @@ class BPEEmbedder:
         self,
         bpe_model_path: str = VOCAB_PATH,
         max_length: int = 512,
-        model_name: str = "roberta-base",
+        lstm_checkpoint_path: str = None,
     ):
-        print(f"--- Loading BPE Embedder (pretrained {model_name}) ---")
+        """
+        Args:
+            bpe_model_path: Path to BPE tokenizer
+            max_length: Max sequence length
+            lstm_checkpoint_path: Path to trained LSTM checkpoint (default: models/lstm_bpe_best.pt)
+        """
+        print(f"--- Loading BPE Embedder (TRAINED LSTM) ---")
 
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         print("Device:", self.device)
@@ -40,22 +47,39 @@ class BPEEmbedder:
         self.max_length = max_length
 
         # -----------------------------
-        # Load pretrained encoder
+        # Load trained LSTM encoder
         # -----------------------------
-        print(f"Loading pretrained encoder: {model_name}")
-        self.encoder = RobertaModel.from_pretrained(model_name)
+        if lstm_checkpoint_path is None:
+            # Default to best checkpoint
+            repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+            lstm_checkpoint_path = os.path.join(repo_root, "models", "lstm_bpe_best.pt")
+        
+        print(f"Loading trained LSTM from: {lstm_checkpoint_path}")
+        
+        # Import LSTM model
+        import sys
+        repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+        if repo_root not in sys.path:
+            sys.path.insert(0, repo_root)
+        from models.training.lstm_model import SimpleLSTM_LM
+        
+        # Load checkpoint
+        checkpoint = torch.load(lstm_checkpoint_path, map_location=self.device)
+        
+        # Create model
+        self.encoder = SimpleLSTM_LM(
+            vocab_size=self.vocab_size,
+            embedding_dim=256,
+            hidden_dim=256,
+            num_layers=2,
+            dropout=0.2
+        )
+        self.encoder.load_state_dict(checkpoint['model_state_dict'])
         self.encoder.to(self.device)
         self.encoder.eval()
-
-        # Replace tokenizer's embedding with new embedding tied to your vocab
-        hidden = self.encoder.config.hidden_size
-        self.encoder.embeddings.word_embeddings = nn.Embedding(
-            num_embeddings=self.vocab_size,
-            embedding_dim=hidden,
-        ).to(self.device)
-
-        print(f"Embedding dimension: {hidden}")
-        self.hidden = hidden
+        
+        self.hidden = 256  # LSTM hidden dim
+        print(f"✅ Loaded trained LSTM (embedding dimension: {self.hidden})")
 
     # -----------------------------------------------------------
     # Encode + pad
@@ -93,14 +117,19 @@ class BPEEmbedder:
         input_ids, mask = self._encode_and_pad(texts)
 
         with torch.no_grad():
-            outputs = self.encoder(
-                input_ids=input_ids,
-                attention_mask=mask,
-            )
+            # LSTM forward pass
+            logits, hidden = self.encoder(input_ids)
+            # Use LSTM output (before final projection layer)
+            # logits shape: (batch, seq, hidden_dim) from LSTM, then projected to vocab_size
+            # We want the LSTM hidden states before projection
+            # Re-run without projection by accessing LSTM directly
+            embedded = self.encoder.dropout(self.encoder.embedding(input_ids))
+            lstm_output, _ = self.encoder.lstm(embedded)
+            lstm_output = self.encoder.dropout(lstm_output)
+            # Now pool the LSTM output
+            pooled = self._mean_pool(lstm_output, mask)
 
-        pooled = self._mean_pool(outputs.last_hidden_state, mask)
         normalized = torch.nn.functional.normalize(pooled, p=2, dim=1)
-
         return normalized.cpu().tolist()
 
     # -----------------------------------------------------------

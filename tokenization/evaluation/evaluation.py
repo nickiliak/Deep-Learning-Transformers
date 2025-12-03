@@ -68,6 +68,14 @@ MODELS = [
         'is_bpe': False
     },
     {
+        'name': 'BPE-LSTM-Trained',
+        'embedder_class': BPEEmbedder,
+        'bpe_model_path': os.path.join(repo_root, 'tokenization', 'vocabularies', 'bpe_tokenizer.json'),
+        'table_name': 'BPE_LSTM_Trained',
+        'vector_dim': 256,
+        'is_bpe': True
+    },
+    {
         'name': 'BERT-MiniLM',
         'embedder_class': BertEmbedder,
         'model_id': 'sentence-transformers/all-MiniLM-L6-v2',
