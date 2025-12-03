@@ -6,6 +6,7 @@ Compares ByT5, Canine, and BPE tokenizers using Recall@K
 import json
 import os
 import sys
+import time
 from typing import List, Dict, Tuple
 from tqdm import tqdm
 import csv
@@ -122,6 +123,43 @@ def calculate_recall_at_k(retrieved_ids: List[str], relevant_ids: List[str], k: 
     return recall
 
 
+def calculate_mrr(retrieved_ids: List[str], relevant_ids: List[str]) -> float:
+    """
+    Calculate MRR (Mean Reciprocal Rank)
+    MRR = 1 / rank of first relevant document
+    Returns 0 if no relevant documents found
+    """
+    if not relevant_ids:
+        return 0.0
+    
+    relevant_set = set(relevant_ids)
+    
+    # Find position of first relevant document (1-indexed)
+    for rank, doc_id in enumerate(retrieved_ids, start=1):
+        if doc_id in relevant_set:
+            return 1.0 / rank
+    
+    # No relevant document found
+    return 0.0
+
+
+def calculate_precision_at_k(retrieved_ids: List[str], relevant_ids: List[str], k: int) -> float:
+    """
+    Calculate Precision@K
+    Precision@K = (# relevant docs in top-K) / K
+    """
+    if not relevant_ids or k == 0:
+        return 0.0
+    
+    retrieved_set = set(retrieved_ids[:k])
+    relevant_set = set(relevant_ids)
+    
+    hits = len(retrieved_set & relevant_set)
+    precision = hits / k
+    
+    return precision
+
+
 def evaluate_model(model_config: Dict, queries: List[Dict], k_values: List[int], engine) -> Dict:
     """
     Evaluate a single model on queries
@@ -145,29 +183,39 @@ def evaluate_model(model_config: Dict, queries: List[Dict], k_values: List[int],
         print(f"❌ Failed to load {model_config['name']}: {e}")
         return None
     
-    # Store recall scores for each K
+    # Store recall scores for each K and MRR scores
     recall_scores = {k: [] for k in k_values}
+    precision_scores = {k: [] for k in k_values}
+    mrr_scores = []
+    embedding_times = []
+    retrieval_times = []
     
     # Evaluate each query
     for query_obj in tqdm(queries, desc=f"{model_config['name']} queries"):
         query_text = query_obj['text']
         relevant_ids = query_obj['corpus-id']
         
-        # Generate query embedding
+        # Generate query embedding (track time)
         try:
+            embed_start = time.time()
             query_embedding = embedder.generate_embedding(query_text)
+            embed_time = (time.time() - embed_start) * 1000  # Convert to milliseconds
+            embedding_times.append(embed_time)
         except Exception as e:
             print(f"⚠️  Failed to embed query {query_obj['_id']}: {e}")
             continue
         
-        # Retrieve documents
+        # Retrieve documents (track time)
         try:
+            retrieval_start = time.time()
             retrieved_ids = retrieve_top_k(
                 query_embedding, 
                 model_config['table_name'], 
                 max(k_values),  # Retrieve max K once
                 engine
             )
+            retrieval_time = (time.time() - retrieval_start) * 1000  # Convert to milliseconds
+            retrieval_times.append(retrieval_time)
         except Exception as e:
             print(f"⚠️  Failed to retrieve for query {query_obj['_id']}: {e}")
             continue
@@ -176,6 +224,13 @@ def evaluate_model(model_config: Dict, queries: List[Dict], k_values: List[int],
         for k in k_values:
             recall = calculate_recall_at_k(retrieved_ids, relevant_ids, k)
             recall_scores[k].append(recall)
+            
+            precision = calculate_precision_at_k(retrieved_ids, relevant_ids, k)
+            precision_scores[k].append(precision)
+        
+        # Calculate MRR
+        mrr = calculate_mrr(retrieved_ids, relevant_ids)
+        mrr_scores.append(mrr)
     
     # Calculate average recall for each K
     avg_recall = {}
@@ -185,9 +240,30 @@ def evaluate_model(model_config: Dict, queries: List[Dict], k_values: List[int],
         else:
             avg_recall[k] = 0.0
     
+    # Calculate average precision for each K
+    avg_precision = {}
+    for k in k_values:
+        if precision_scores[k]:
+            avg_precision[k] = sum(precision_scores[k]) / len(precision_scores[k])
+        else:
+            avg_precision[k] = 0.0
+    
+    # Calculate average MRR
+    avg_mrr = sum(mrr_scores) / len(mrr_scores) if mrr_scores else 0.0
+    
+    # Calculate average latencies
+    avg_embedding_time = sum(embedding_times) / len(embedding_times) if embedding_times else 0.0
+    avg_retrieval_time = sum(retrieval_times) / len(retrieval_times) if retrieval_times else 0.0
+    avg_total_time = avg_embedding_time + avg_retrieval_time
+    
     return {
         'model': model_config['name'],
         'recall_scores': avg_recall,
+        'precision_scores': avg_precision,
+        'mrr': avg_mrr,
+        'avg_embedding_ms': avg_embedding_time,
+        'avg_retrieval_ms': avg_retrieval_time,
+        'avg_total_ms': avg_total_time,
         'num_queries': len(queries)
     }
 
@@ -198,17 +274,26 @@ def save_results(results: List[Dict], output_path: str):
         # Get all K values from first result
         k_values = list(results[0]['recall_scores'].keys()) if results else []
         
-        fieldnames = ['model', 'num_queries'] + [f'recall@{k}' for k in k_values]
+        fieldnames = (
+            ['model', 'num_queries', 'mrr', 'avg_embedding_ms', 'avg_retrieval_ms', 'avg_total_ms'] + 
+            [f'recall@{k}' for k in k_values] +
+            [f'precision@{k}' for k in k_values]
+        )
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         
         writer.writeheader()
         for result in results:
             row = {
                 'model': result['model'],
-                'num_queries': result['num_queries']
+                'num_queries': result['num_queries'],
+                'mrr': f"{result['mrr']:.4f}",
+                'avg_embedding_ms': f"{result['avg_embedding_ms']:.2f}",
+                'avg_retrieval_ms': f"{result['avg_retrieval_ms']:.2f}",
+                'avg_total_ms': f"{result['avg_total_ms']:.2f}"
             }
             for k in k_values:
                 row[f'recall@{k}'] = f"{result['recall_scores'][k]:.4f}"
+                row[f'precision@{k}'] = f"{result['precision_scores'][k]:.4f}"
             writer.writerow(row)
     
     print(f"\n✅ Results saved to {output_path}")
@@ -223,8 +308,14 @@ def print_results(results: List[Dict]):
     for result in results:
         print(f"\n{result['model']}:")
         print(f"  Queries evaluated: {result['num_queries']}")
+        print(f"  MRR: {result['mrr']:.4f}")
         for k, score in result['recall_scores'].items():
             print(f"  Recall@{k}: {score:.4f}")
+        for k, score in result['precision_scores'].items():
+            print(f"  Precision@{k}: {score:.4f}")
+        print(f"  Avg Embedding Time: {result['avg_embedding_ms']:.2f} ms")
+        print(f"  Avg Retrieval Time: {result['avg_retrieval_ms']:.2f} ms")
+        print(f"  Avg Total Time: {result['avg_total_ms']:.2f} ms")
 
 
 def main():
