@@ -24,6 +24,7 @@ if repo_root not in sys.path:
 from tokenization.our_tokenizers.ByT5.ByT5_embedding import ByT5Embedder
 from tokenization.our_tokenizers.Canine.Canine_embedding import CanineEmbedder
 from tokenization.our_tokenizers.BPE.BPE_embedding import BPEEmbedder
+from tokenization.our_tokenizers.BPE.BPE_transformer_embedding import BPETransformerEmbedder
 from tokenization.our_tokenizers.BPE.BPEpre import BPEPretrainedEmbedder
 from tokenization.baseline.BERT.bert_embeddings import BertEmbedder
 
@@ -36,14 +37,14 @@ QUERIES_PATH = os.path.join(repo_root, "data_filtered", "queries_filtered.jsonl"
 
 # Model configurations
 MODELS = [
-    # {
-    #     'name': 'ByT5',
-    #     'embedder_class': ByT5Embedder,
-    #     'model_id': 'google/byt5-small',
-    #     'table_name': 'byt5_small',
-    #     'vector_dim': 1472,
-    #     'is_bpe': False
-    # },
+    {
+        'name': 'ByT5',
+        'embedder_class': ByT5Embedder,
+        'model_id': 'google/byt5-small',
+        'table_name': 'byt5_small',
+        'vector_dim': 1472,
+        'is_bpe': False
+    },
     {
         'name': 'Canine',
         'embedder_class': CanineEmbedder,
@@ -52,14 +53,6 @@ MODELS = [
         'vector_dim': 768,
         'is_bpe': False
     },
-    # {
-    #     'name': 'BPE',
-    #     'embedder_class': BPEEmbedder,
-    #     'bpe_model_path': os.path.join(repo_root, 'tokenization', 'vocabularies', 'bpe_tokenizer.json'),
-    #     'table_name': 'BPE',
-    #     'vector_dim': 768,  # BPE uses d_model=768
-    #     'is_bpe': True
-    # },
     {   'name': 'BPE_Pretrained',
         'embedder_class': BPEPretrainedEmbedder,
         'model_id': 'roberta-base',
@@ -71,7 +64,15 @@ MODELS = [
         'name': 'BPE-LSTM-Trained',
         'embedder_class': BPEEmbedder,
         'bpe_model_path': os.path.join(repo_root, 'tokenization', 'vocabularies', 'bpe_tokenizer.json'),
-        'table_name': 'BPE_LSTM_Trained',
+        'table_name': 'bpe-lstm-trained',
+        'vector_dim': 256,
+        'is_bpe': True
+    },
+    {
+        'name': 'BPE-Transformer-Trained',
+        'embedder_class': BPETransformerEmbedder,
+        'bpe_model_path': os.path.join(repo_root, 'tokenization', 'vocabularies', 'bpe_tokenizer.json'),
+        'table_name': 'bpe-transformer',  # Actual table name in database
         'vector_dim': 256,
         'is_bpe': True
     },
@@ -112,22 +113,40 @@ def retrieve_top_k(query_embedding: List[float], table_name: str, k: int, engine
     """
     with Session(engine) as session:
         # Use raw SQL for pgvector similarity search
-        # Cast the parameter to vector type explicitly to avoid type mismatch
-        # Quote table name to handle case-sensitive names like "BPE"
-        query = text(f"""
-            SELECT id, embedding <=> CAST(:query_embedding AS vector) AS distance
-            FROM "{table_name}"
-            ORDER BY distance
-            LIMIT :k
-        """)
-        
-        result = session.execute(
-            query,
-            {"query_embedding": str(query_embedding), "k": k}
-        )
-        
-        doc_ids = [row[0] for row in result]
-        return doc_ids
+        # Try with exact case first, then lowercase if that fails
+        # PostgreSQL stores unquoted names as lowercase, but SQLModel creates them with exact case
+        try:
+            # Try lowercase (PostgreSQL default)
+            query = text(f"""
+                SELECT id, embedding <=> CAST(:query_embedding AS vector) AS distance
+                FROM {table_name.lower()}
+                ORDER BY distance
+                LIMIT :k
+            """)
+            
+            result = session.execute(
+                query,
+                {"query_embedding": str(query_embedding), "k": k}
+            )
+            
+            doc_ids = [row[0] for row in result]
+            return doc_ids
+        except Exception as e:
+            # If lowercase fails, try with exact case quoted
+            query = text(f"""
+                SELECT id, embedding <=> CAST(:query_embedding AS vector) AS distance
+                FROM "{table_name}"
+                ORDER BY distance
+                LIMIT :k
+            """)
+            
+            result = session.execute(
+                query,
+                {"query_embedding": str(query_embedding), "k": k}
+            )
+            
+            doc_ids = [row[0] for row in result]
+            return doc_ids
 
 
 def calculate_recall_at_k(retrieved_ids: List[str], relevant_ids: List[str], k: int) -> float:
