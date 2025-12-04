@@ -6,13 +6,13 @@ from transformers import RobertaModel
 import os
 VOCAB_PATH = "tokenization\\vocabularies\\CustomBPETokenizer.json"
 
-class BPEEmbedder:
+class BPELSTMEmbedder:
     """
         - generate_embedding(text) -> List[float]
         - generate_embeddings_batch(texts) -> List[List[float]]
         - embedding_dimension property
 
-        BPE Embedder using a custom BPE tokenizer and a pretrained Roberta encoder.
+        BPE Embedder using a custom BPE tokenizer and a trained LSTM encoder.
     """
 
     def __init__(
@@ -25,9 +25,9 @@ class BPEEmbedder:
         Args:
             bpe_model_path: Path to BPE tokenizer
             max_length: Max sequence length
-            lstm_checkpoint_path: Path to trained LSTM checkpoint (default: models/lstm_bpe_best.pt)
+            lstm_checkpoint_path: Path to trained LSTM checkpoint (default: models/LSTM/lstm_bpe_best.pt)
         """
-        print(f"--- Loading BPE Embedder (TRAINED LSTM) ---")
+        print(f"--- Loading BPE-LSTM Embedder (TRAINED LSTM) ---")
 
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         print("Device:", self.device)
@@ -52,7 +52,7 @@ class BPEEmbedder:
         if lstm_checkpoint_path is None:
             # Default to best checkpoint
             repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
-            lstm_checkpoint_path = os.path.join(repo_root, "models", "lstm_bpe_best.pt")
+            lstm_checkpoint_path = os.path.join(repo_root, "models", "LSTM", "lstm_bpe_best.pt")
         
         print(f"Loading trained LSTM from: {lstm_checkpoint_path}")
         
@@ -61,7 +61,7 @@ class BPEEmbedder:
         repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
         if repo_root not in sys.path:
             sys.path.insert(0, repo_root)
-        from models.training.lstm_model import SimpleLSTM_LM
+        from models.LSTM.training.lstm_model import SimpleLSTM_LM
         
         # Load checkpoint
         checkpoint = torch.load(lstm_checkpoint_path, map_location=self.device)

@@ -51,7 +51,7 @@ python train_bpe_lstm.py
 
 ### Using Trained Models for Retrieval
 Models are automatically loaded by their respective embedders in `tokenization/our_tokenizers/`:
-- `BPE/BPE_embedding.py` - Uses trained LSTM
+- `BPE/BPE_LSTM_embedding.py` - Uses trained LSTM
 - Generates 256-dimensional embeddings via mean pooling
 
 ## Evaluation
