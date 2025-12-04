@@ -23,7 +23,7 @@ if repo_root not in sys.path:
 
 from tokenization.our_tokenizers.ByT5.ByT5_embedding import ByT5Embedder
 from tokenization.our_tokenizers.Canine.Canine_embedding import CanineEmbedder
-from tokenization.our_tokenizers.BPE.BPE_embedding import BPEEmbedder
+from tokenization.our_tokenizers.BPE.BPE_LSTM_embedding import BPELSTMEmbedder
 from tokenization.our_tokenizers.BPE.BPE_transformer_embedding import BPETransformerEmbedder
 from tokenization.our_tokenizers.BPE.BPEpre import BPEPretrainedEmbedder
 from tokenization.baseline.BERT.bert_embeddings import BertEmbedder
@@ -37,34 +37,34 @@ QUERIES_PATH = os.path.join(repo_root, "data_filtered", "queries_filtered.jsonl"
 
 # Model configurations
 MODELS = [
-    {
-        'name': 'ByT5',
-        'embedder_class': ByT5Embedder,
-        'model_id': 'google/byt5-small',
-        'table_name': 'byt5_small',
-        'vector_dim': 1472,
-        'is_bpe': False
-    },
-    {
-        'name': 'Canine',
-        'embedder_class': CanineEmbedder,
-        'model_id': 'google/canine-s',
-        'table_name': 'canine_s',
-        'vector_dim': 768,
-        'is_bpe': False
-    },
-    {   'name': 'BPE_Pretrained',
-        'embedder_class': BPEPretrainedEmbedder,
-        'model_id': 'roberta-base',
-        'table_name': 'BPE',
-        'vector_dim': 768,
-        'is_bpe': False
-    },
+    # {
+    #     'name': 'ByT5',
+    #     'embedder_class': ByT5Embedder,
+    #     'model_id': 'google/byt5-small',
+    #     'table_name': 'byt5_small',
+    #     'vector_dim': 1472,
+    #     'is_bpe': False
+    # },
+    # {
+    #     'name': 'Canine',
+    #     'embedder_class': CanineEmbedder,
+    #     'model_id': 'google/canine-s',
+    #     'table_name': 'canine_s',
+    #     'vector_dim': 768,
+    #     'is_bpe': False
+    # },
+    # {   'name': 'BPE_Pretrained',
+    #     'embedder_class': BPEPretrainedEmbedder,
+    #     'model_id': 'roberta-base',
+    #     'table_name': 'BPE',
+    #     'vector_dim': 768,
+    #     'is_bpe': False
+    # },
     {
         'name': 'BPE-LSTM-Trained',
-        'embedder_class': BPEEmbedder,
+        'embedder_class': BPELSTMEmbedder,
         'bpe_model_path': os.path.join(repo_root, 'tokenization', 'vocabularies', 'bpe_tokenizer.json'),
-        'table_name': 'bpe-lstm-trained',
+        'table_name': 'bpe-lstm',  # Match pipeline table name
         'vector_dim': 256,
         'is_bpe': True
     },
@@ -111,7 +111,9 @@ def retrieve_top_k(query_embedding: List[float], table_name: str, k: int, engine
     Retrieve top-k document IDs using pgvector similarity search
     Returns list of document IDs
     """
-    with Session(engine) as session:
+    # Use engine.connect() instead of Session to get isolated connections
+    # This prevents transaction abort issues
+    with engine.connect() as connection:
         # Use raw SQL for pgvector similarity search
         # Try with exact case first, then lowercase if that fails
         # PostgreSQL stores unquoted names as lowercase, but SQLModel creates them with exact case
@@ -124,7 +126,7 @@ def retrieve_top_k(query_embedding: List[float], table_name: str, k: int, engine
                 LIMIT :k
             """)
             
-            result = session.execute(
+            result = connection.execute(
                 query,
                 {"query_embedding": str(query_embedding), "k": k}
             )
@@ -132,7 +134,8 @@ def retrieve_top_k(query_embedding: List[float], table_name: str, k: int, engine
             doc_ids = [row[0] for row in result]
             return doc_ids
         except Exception as e:
-            # If lowercase fails, try with exact case quoted
+            # If lowercase fails, rollback and try with exact case quoted
+            connection.rollback()
             query = text(f"""
                 SELECT id, embedding <=> CAST(:query_embedding AS vector) AS distance
                 FROM "{table_name}"
@@ -140,7 +143,7 @@ def retrieve_top_k(query_embedding: List[float], table_name: str, k: int, engine
                 LIMIT :k
             """)
             
-            result = session.execute(
+            result = connection.execute(
                 query,
                 {"query_embedding": str(query_embedding), "k": k}
             )
@@ -379,7 +382,7 @@ def main():
     print(f"\n🎯 Evaluating on {len(eval_queries)} test queries")
     
     # K values to evaluate
-    k_values = [1, 5, 10]
+    k_values = [1, 5, 10, 100]
     print(f"📏 K values: {k_values}")
     
     # Connect to database
