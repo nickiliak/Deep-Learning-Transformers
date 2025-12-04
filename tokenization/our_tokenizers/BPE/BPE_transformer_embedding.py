@@ -36,7 +36,7 @@ class BPETransformerEmbedder:
         """
         print(f"--- Loading BPE Embedder (TRAINED TRANSFORMER) ---")
 
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.device = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
         print("Device:", self.device)
 
         # Load custom BPE tokenizer
