@@ -15,8 +15,8 @@ repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 if repo_root not in sys.path:
     sys.path.insert(0, repo_root)
 
-from models.training.lstm_model import SimpleLSTM_LM
-from models.training.dataset import LanguageModelingDataset, load_documents_from_jsonl
+from lstm_model import SimpleLSTM_LM
+from dataset import LanguageModelingDataset, load_documents_from_jsonl
 from tokenization.our_tokenizers.BPE.BPE_tokenization import CustomBPETokenizer
 
 
