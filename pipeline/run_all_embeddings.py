@@ -28,6 +28,7 @@ from tokenization.our_tokenizers.ByT5.ByT5_embedding import ByT5Embedder
 from tokenization.our_tokenizers.Canine.Canine_embedding import CanineEmbedder
 from tokenization.our_tokenizers.BPE.BPE_LSTM_embedding import BPELSTMEmbedder
 from tokenization.our_tokenizers.BPE.BPE_transformer_embedding import BPETransformerEmbedder
+from tokenization.our_tokenizers.BPE.BPEpre import BPEPretrainedEmbedder
 from tokenization.baseline.BERT.bert_embeddings import BertEmbedder
 
 # Database imports
@@ -54,7 +55,7 @@ MODELS = {
         'model_id': 'google/byt5-small',
         'table_name': 'byt5_small',
         'vector_dim': 1472,
-        'batch_size': 8,  # Smaller batch for large model
+        'batch_size': 256,  # Smaller batch for large model
     },
     'canine': {
         'name': 'Canine',
@@ -62,7 +63,7 @@ MODELS = {
         'model_id': 'google/canine-s',
         'table_name': 'canine_s',
         'vector_dim': 768,
-        'batch_size': 16,
+        'batch_size': 512,
     },
     'bpe-lstm': {
         'name': 'BPE-LSTM-Trained',
@@ -78,7 +79,15 @@ MODELS = {
         'model_id': os.path.join(repo_root, 'tokenization', 'vocabularies', 'bpe_tokenizer.json'),
         'table_name': 'bpe-transformer',
         'vector_dim': 256,
-        'batch_size': 16,
+        'batch_size': 512,
+    },
+    'bpe-pretrained': {
+        'name': 'BPE-Pretrained',
+        'embedder_class': BPEPretrainedEmbedder,
+        'model_id': os.path.join(repo_root, 'tokenization', 'vocabularies', 'bpe_tokenizer.json'),
+        'table_name': 'bpe-pretrained',
+        'vector_dim': 256,
+        'batch_size': 512,
     },
     'bert': {
         'name': 'BERT-MiniLM',
