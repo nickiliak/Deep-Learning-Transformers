@@ -74,3 +74,10 @@ class BPEPretrainedEmbedder:
     @property
     def embedding_dimension(self) -> int:
         return self._hidden_size
+    
+    def cleanup(self):
+        """Explicitly move model off GPU and clean up memory."""
+        if torch.cuda.is_available():
+            self.model = self.model.cpu()
+            torch.cuda.empty_cache()
+            torch.cuda.synchronize()
