@@ -89,10 +89,14 @@ class BPELSTMEmbedder:
         for t in texts:
             ids = self.tokenizer.encode(t)
 
+            # Truncate
             if len(ids) > self.max_length:
                 ids = ids[:self.max_length]
-            else:
-                ids = ids + [self.pad_id] * (self.max_length - len(ids))
+            
+            # Pad
+            pad_len = self.max_length - len(ids)
+            if pad_len > 0:
+                ids.extend([self.pad_id] * pad_len)
 
             all_ids.append(ids)
 
@@ -117,15 +121,14 @@ class BPELSTMEmbedder:
         input_ids, mask = self._encode_and_pad(texts)
 
         with torch.no_grad():
-            # LSTM forward pass
-            logits, hidden = self.encoder(input_ids)
-            # Use LSTM output (before final projection layer)
-            # logits shape: (batch, seq, hidden_dim) from LSTM, then projected to vocab_size
-            # We want the LSTM hidden states before projection
-            # Re-run without projection by accessing LSTM directly
+            # OPTIMIZATION: Removed redundant full forward pass
+            # We only need the LSTM hidden states, not the final logits (vocab projection)
+            
+            # Access sub-modules directly to skip the expensive final linear layer
             embedded = self.encoder.dropout(self.encoder.embedding(input_ids))
             lstm_output, _ = self.encoder.lstm(embedded)
             lstm_output = self.encoder.dropout(lstm_output)
+            
             # Now pool the LSTM output
             pooled = self._mean_pool(lstm_output, mask)
 
