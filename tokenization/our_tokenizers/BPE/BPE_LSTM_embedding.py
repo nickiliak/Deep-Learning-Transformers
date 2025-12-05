@@ -24,7 +24,7 @@ class BPELSTMEmbedder:
         """
         Args:
             bpe_model_path: Path to BPE tokenizer
-            max_length: Max sequence length
+            max_length: Max sequence length (hard limit for truncation only)
             lstm_checkpoint_path: Path to trained LSTM checkpoint (default: models/LSTM/lstm_bpe_best.pt)
         """
         print(f"--- Loading BPE-LSTM Embedder (TRAINED LSTM) ---")
@@ -32,9 +32,7 @@ class BPELSTMEmbedder:
         self.device = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
         print("Device:", self.device)
 
-        # -----------------------------
         # Load your custom BPE tokenizer
-        # -----------------------------
         self.tokenizer = CustomBPETokenizer()
         self.tokenizer.load(bpe_model_path)
 
@@ -46,11 +44,8 @@ class BPELSTMEmbedder:
 
         self.max_length = max_length
 
-        # -----------------------------
         # Load trained LSTM encoder
-        # -----------------------------
         if lstm_checkpoint_path is None:
-            # Default to best checkpoint
             repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
             lstm_checkpoint_path = os.path.join(repo_root, "models", "LSTM", "lstm_bpe_best.pt")
         
@@ -82,25 +77,33 @@ class BPELSTMEmbedder:
         print(f"✅ Loaded trained LSTM (embedding dimension: {self.hidden})")
 
     # -----------------------------------------------------------
-    # Encode + pad
+    # Encode + pad with DYNAMIC PADDING (critical for performance!)
     # -----------------------------------------------------------
     def _encode_and_pad(self, texts: List[str]):
-        all_ids = []
+        """
+        Encode texts with BPE and pad to BATCH MAX LENGTH, not global max_length.
+        This is critical for performance - if batch has short texts (avg 50 tokens),
+        we pad to 50, not 512. This gives 10x speedup on small batches!
+        """
+        # 1. Encode all and truncate to hard limit
+        encoded = []
         for t in texts:
             ids = self.tokenizer.encode(t)
-
-            # Truncate
             if len(ids) > self.max_length:
                 ids = ids[:self.max_length]
-            
-            # Pad
-            pad_len = self.max_length - len(ids)
-            if pad_len > 0:
-                ids.extend([self.pad_id] * pad_len)
-
-            all_ids.append(ids)
-
-        input_ids = torch.tensor(all_ids, dtype=torch.long, device=self.device)
+            encoded.append(ids)
+        
+        # 2. Find batch max length (not global!)
+        batch_max_len = max(len(ids) for ids in encoded) if encoded else 1
+        
+        # 3. Pad to batch max only
+        padded = []
+        for ids in encoded:
+            pad_len = batch_max_len - len(ids)
+            padded.append(ids + [self.pad_id] * pad_len)
+        
+        # 4. Create tensors on GPU directly
+        input_ids = torch.tensor(padded, dtype=torch.long, device=self.device)
         attention_mask = (input_ids != self.pad_id).long()
 
         return input_ids, attention_mask
@@ -115,24 +118,32 @@ class BPELSTMEmbedder:
         return summed / counts
 
     # -----------------------------------------------------------
-    # Batch embeddings
+    # Batch embeddings - OPTIMIZED FOR SPEED
     # -----------------------------------------------------------
     def generate_embeddings_batch(self, texts: List[str]) -> List[List[float]]:
+        """
+        Generate embeddings for batch of texts.
+        CRITICAL OPTIMIZATIONS:
+        1. Dynamic padding (batch_max_len, not global max_length)
+        2. Skip final linear layer (not needed for embeddings)
+        3. Keep on GPU until final output
+        4. Use torch.no_grad() context for inference efficiency
+        """
         input_ids, mask = self._encode_and_pad(texts)
 
         with torch.no_grad():
-            # OPTIMIZATION: Removed redundant full forward pass
-            # We only need the LSTM hidden states, not the final logits (vocab projection)
-            
-            # Access sub-modules directly to skip the expensive final linear layer
+            # Process on GPU in inference mode
             embedded = self.encoder.dropout(self.encoder.embedding(input_ids))
             lstm_output, _ = self.encoder.lstm(embedded)
             lstm_output = self.encoder.dropout(lstm_output)
             
-            # Now pool the LSTM output
+            # Pool on GPU
             pooled = self._mean_pool(lstm_output, mask)
-
-        normalized = torch.nn.functional.normalize(pooled, p=2, dim=1)
+            
+            # Normalize on GPU
+            normalized = torch.nn.functional.normalize(pooled, p=2, dim=1)
+        
+        # Only move to CPU at the very end for output
         return normalized.cpu().tolist()
 
     # -----------------------------------------------------------
