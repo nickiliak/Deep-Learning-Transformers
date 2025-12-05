@@ -60,22 +60,22 @@ MODELS = [
     #     'vector_dim': 768,
     #     'is_bpe': False
     # },
-    {
-        'name': 'BPE-LSTM-Trained',
-        'embedder_class': BPELSTMEmbedder,
-        'bpe_model_path': os.path.join(repo_root, 'tokenization', 'vocabularies', 'bpe_tokenizer.json'),
-        'table_name': 'bpe-lstm',  # Match pipeline table name
-        'vector_dim': 256,
-        'is_bpe': True
-    },
-    {
-        'name': 'BPE-Transformer-Trained',
-        'embedder_class': BPETransformerEmbedder,
-        'bpe_model_path': os.path.join(repo_root, 'tokenization', 'vocabularies', 'bpe_tokenizer.json'),
-        'table_name': 'bpe-transformer',  # Actual table name in database
-        'vector_dim': 256,
-        'is_bpe': True
-    },
+    # {
+    #     'name': 'BPE-LSTM-Trained',
+    #     'embedder_class': BPELSTMEmbedder,
+    #     'bpe_model_path': os.path.join(repo_root, 'tokenization', 'vocabularies', 'bpe_tokenizer.json'),
+    #     'table_name': 'bpe-lstm',  # Match pipeline table name
+    #     'vector_dim': 256,
+    #     'is_bpe': True
+    # },
+    # {
+    #     'name': 'BPE-Transformer-Trained',
+    #     'embedder_class': BPETransformerEmbedder,
+    #     'bpe_model_path': os.path.join(repo_root, 'tokenization', 'vocabularies', 'bpe_tokenizer.json'),
+    #     'table_name': 'bpe-transformer',  # Actual table name in database
+    #     'vector_dim': 256,
+    #     'is_bpe': True
+    # },
     {
         'name': 'BERT-MiniLM',
         'embedder_class': BertEmbedder,
@@ -208,14 +208,14 @@ def calculate_precision_at_k(retrieved_ids: List[str], relevant_ids: List[str], 
 
 def evaluate_model(model_config: Dict, queries: List[Dict], k_values: List[int], engine) -> Dict:
     """
-    Evaluate a single model on queries
+    Evaluate a single model on queries using BATCH PROCESSING for embeddings.
     Returns dict with recall scores for each K
     """
     print(f"\n{'='*50}")
     print(f"Evaluating {model_config['name']}...")
     print(f"{'='*50}")
     
-    # Initialize embedder - special handling for BPE
+    # Initialize embedder - standard loading without explicit device handling
     try:
         if model_config.get('is_bpe', False):
             # BPE uses bpe_model_path parameter
@@ -223,50 +223,82 @@ def evaluate_model(model_config: Dict, queries: List[Dict], k_values: List[int],
                 bpe_model_path=model_config['bpe_model_path']
             )
         else:
-            # ByT5 and Canine use model_id parameter
+            # ByT5, Canine, BERT use model_id parameter
             embedder = model_config['embedder_class'](model_config['model_id'])
     except Exception as e:
         print(f"❌ Failed to load {model_config['name']}: {e}")
         return None
     
-    # Store recall scores for each K and MRR scores
+    # ---------------------------------------------------------
+    # STEP 1: BATCH EMBEDDING GENERATION
+    # ---------------------------------------------------------
+    # Instead of processing 1 query -> 1 retrieval -> repeat,
+    # we generate ALL embeddings first in batches to maximize GPU throughput.
+    
+    BATCH_SIZE = 64  # Process 64 queries at once
+    all_query_texts = [q['text'] for q in queries]
+    all_embeddings = [] # Store all calculated vectors here
+    
+    print(f"⚡ Generating embeddings in batches of {BATCH_SIZE}...")
+    embed_start_total = time.time()
+    
+    # Process queries in chunks
+    for i in range(0, len(all_query_texts), BATCH_SIZE):
+        batch_texts = all_query_texts[i : i + BATCH_SIZE]
+        
+        try:
+            # Check if the embedder supports batching (the BPE-LSTM one does)
+            if hasattr(embedder, 'generate_embeddings_batch'):
+                batch_vectors = embedder.generate_embeddings_batch(batch_texts)
+            else:
+                # Fallback for models that might not have the batch method yet
+                batch_vectors = [embedder.generate_embedding(t) for t in batch_texts]
+            
+            all_embeddings.extend(batch_vectors)
+            
+        except Exception as e:
+            print(f"⚠️ Error in batch {i}: {e}")
+            # Append None to keep indices aligned if a batch fails
+            all_embeddings.extend([None] * len(batch_texts))
+
+    # Calculate average embedding time per query based on total batch time
+    total_embed_time_ms = (time.time() - embed_start_total) * 1000
+    avg_embedding_time = total_embed_time_ms / len(queries) if queries else 0
+
+    # ---------------------------------------------------------
+    # STEP 2: RETRIEVAL AND SCORING
+    # ---------------------------------------------------------
+    
     recall_scores = {k: [] for k in k_values}
     precision_scores = {k: [] for k in k_values}
     mrr_scores = []
-    embedding_times = []
     retrieval_times = []
     
-    # Evaluate each query
-    for query_obj in tqdm(queries, desc=f"{model_config['name']} queries"):
-        query_text = query_obj['text']
+    # Iterate through queries, using the pre-calculated embeddings
+    for i, query_obj in enumerate(tqdm(queries, desc=f"{model_config['name']} retrieval")):
         relevant_ids = query_obj['corpus-id']
+        query_embedding = all_embeddings[i]
         
-        # Generate query embedding (track time)
-        try:
-            embed_start = time.time()
-            query_embedding = embedder.generate_embedding(query_text)
-            embed_time = (time.time() - embed_start) * 1000  # Convert to milliseconds
-            embedding_times.append(embed_time)
-        except Exception as e:
-            print(f"⚠️  Failed to embed query {query_obj['_id']}: {e}")
+        # Skip if embedding failed
+        if query_embedding is None:
             continue
         
-        # Retrieve documents (track time)
+        # Retrieve documents (Database Search)
         try:
             retrieval_start = time.time()
             retrieved_ids = retrieve_top_k(
                 query_embedding, 
                 model_config['table_name'], 
-                max(k_values),  # Retrieve max K once
+                max(k_values),
                 engine
             )
-            retrieval_time = (time.time() - retrieval_start) * 1000  # Convert to milliseconds
+            retrieval_time = (time.time() - retrieval_start) * 1000  # Convert to ms
             retrieval_times.append(retrieval_time)
         except Exception as e:
             print(f"⚠️  Failed to retrieve for query {query_obj['_id']}: {e}")
             continue
         
-        # Calculate recall for each K
+        # Calculate Metrics (Recall, Precision, MRR)
         for k in k_values:
             recall = calculate_recall_at_k(retrieved_ids, relevant_ids, k)
             recall_scores[k].append(recall)
@@ -274,32 +306,28 @@ def evaluate_model(model_config: Dict, queries: List[Dict], k_values: List[int],
             precision = calculate_precision_at_k(retrieved_ids, relevant_ids, k)
             precision_scores[k].append(precision)
         
-        # Calculate MRR
         mrr = calculate_mrr(retrieved_ids, relevant_ids)
         mrr_scores.append(mrr)
     
-    # Calculate average recall for each K
+    # ---------------------------------------------------------
+    # STEP 3: AGGREGATE RESULTS
+    # ---------------------------------------------------------
+    
+    # Calculate averages
     avg_recall = {}
     for k in k_values:
-        if recall_scores[k]:
-            avg_recall[k] = sum(recall_scores[k]) / len(recall_scores[k])
-        else:
-            avg_recall[k] = 0.0
+        avg_recall[k] = sum(recall_scores[k]) / len(recall_scores[k]) if recall_scores[k] else 0.0
     
-    # Calculate average precision for each K
     avg_precision = {}
     for k in k_values:
-        if precision_scores[k]:
-            avg_precision[k] = sum(precision_scores[k]) / len(precision_scores[k])
-        else:
-            avg_precision[k] = 0.0
+        avg_precision[k] = sum(precision_scores[k]) / len(precision_scores[k]) if precision_scores[k] else 0.0
     
-    # Calculate average MRR
     avg_mrr = sum(mrr_scores) / len(mrr_scores) if mrr_scores else 0.0
     
-    # Calculate average latencies
-    avg_embedding_time = sum(embedding_times) / len(embedding_times) if embedding_times else 0.0
+    # Average retrieval time
     avg_retrieval_time = sum(retrieval_times) / len(retrieval_times) if retrieval_times else 0.0
+    
+    # Total time = Avg Embed Time (Amortized from batches) + Avg Retrieval Time
     avg_total_time = avg_embedding_time + avg_retrieval_time
     
     return {
@@ -307,7 +335,7 @@ def evaluate_model(model_config: Dict, queries: List[Dict], k_values: List[int],
         'recall_scores': avg_recall,
         'precision_scores': avg_precision,
         'mrr': avg_mrr,
-        'avg_embedding_ms': avg_embedding_time,
+        'avg_embedding_ms': avg_embedding_time, 
         'avg_retrieval_ms': avg_retrieval_time,
         'avg_total_ms': avg_total_time,
         'num_queries': len(queries)
@@ -382,7 +410,7 @@ def main():
     print(f"\n🎯 Evaluating on {len(eval_queries)} test queries")
     
     # K values to evaluate
-    k_values = [1, 5, 10, 100]
+    k_values = [1, 5, 10, 15]
     print(f"📏 K values: {k_values}")
     
     # Connect to database
