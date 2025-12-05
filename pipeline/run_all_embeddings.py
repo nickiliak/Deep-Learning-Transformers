@@ -63,7 +63,7 @@ MODELS = {
         'model_id': 'google/canine-s',
         'table_name': 'canine_s',
         'vector_dim': 768,
-        'batch_size': 512,
+        'batch_size': 256,
     },
     'bpe-lstm': {
         'name': 'BPE-LSTM-Trained',
@@ -71,7 +71,7 @@ MODELS = {
         'model_id': os.path.join(repo_root, 'tokenization', 'vocabularies', 'bpe_tokenizer.json'),
         'table_name': 'bpe-lstm',
         'vector_dim': 256,
-        'batch_size': 512,
+        'batch_size': 256,
     },
     'bpe-transformer': {
         'name': 'BPE-Transformer-Trained',
@@ -79,7 +79,7 @@ MODELS = {
         'model_id': os.path.join(repo_root, 'tokenization', 'vocabularies', 'bpe_tokenizer.json'),
         'table_name': 'bpe-transformer',
         'vector_dim': 256,
-        'batch_size': 512,
+        'batch_size': 256,
     },
     'bpe-pretrained': {
         'name': 'BPE-Pretrained',
@@ -87,7 +87,7 @@ MODELS = {
         'model_id': os.path.join(repo_root, 'tokenization', 'vocabularies', 'bpe_tokenizer.json'),
         'table_name': 'bpe-pretrained',
         'vector_dim': 256,
-        'batch_size': 512,
+        'batch_size': 256,
     },
     'bert': {
         'name': 'BERT-MiniLM',
