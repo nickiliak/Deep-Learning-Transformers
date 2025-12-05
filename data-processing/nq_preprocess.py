@@ -5,7 +5,7 @@
 # ## CORPUS DATASET
 
 # %% [markdown]
-# reading the original corpus dataset from google nq, filtering by the first 2000 documents and dropping the metadata column ../data_compressed/corpus_filtered.jsonl
+# reading the original corpus dataset from google nq, filtering by the first 3000 documents and dropping the metadata column ../data_compressed/corpus_filtered.jsonl
 
 # %%
 import pandas as pd
