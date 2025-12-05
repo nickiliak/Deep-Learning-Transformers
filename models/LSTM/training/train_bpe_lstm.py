@@ -1,4 +1,3 @@
-
 """
 Train LSTM Language Model with BPE tokenization
 """
@@ -16,8 +15,8 @@ repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 
 if repo_root not in sys.path:
     sys.path.insert(0, repo_root)
 
-from lstm_model import SimpleLSTM_LM
-from dataset import LanguageModelingDataset, load_documents_from_jsonl
+from models.LSTM.training.lstm_model import SimpleLSTM_LM
+from models.LSTM.training.dataset import LanguageModelingDataset, load_documents_from_jsonl
 from tokenization.our_tokenizers.BPE.BPE_tokenization import CustomBPETokenizer
 
 
@@ -124,7 +123,7 @@ def main():
     
     BATCH_SIZE = 32
     SEQ_LENGTH = 128
-    NUM_EPOCHS = 50
+    NUM_EPOCHS = 10
     LEARNING_RATE = 0.001
     MAX_DOCS = 5000  # Use subset for faster training
     
