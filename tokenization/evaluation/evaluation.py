@@ -69,10 +69,10 @@ MODELS = [
         'is_bpe': True
     },
     {
-        'name': 'BPE-Transformer-Trained',
+        'name': 'BPE-Pretrained',
         'embedder_class': BPETransformerEmbedder,
         'bpe_model_path': os.path.join(repo_root, 'tokenization', 'vocabularies', 'bpe_tokenizer.json'),
-        'table_name': 'bpe-transformer',  # Actual table name in database
+        'table_name': 'bpe-pretrained',  # Actual table name in database
         'vector_dim': 256,
         'is_bpe': True
     },
