@@ -1,0 +1,90 @@
+
+ByT5:
+  Queries evaluated: 1500
+  MRR: 0.0003
+  Recall@1: 0.0000
+  Recall@5: 0.0003
+  Recall@10: 0.0010
+  Recall@15: 0.0010
+  Precision@1: 0.0000
+  Precision@5: 0.0001
+  Precision@10: 0.0001
+  Precision@15: 0.0001
+  Avg Embedding Time: 1.42 ms
+  Avg Retrieval Time: 285.59 ms
+  Avg Total Time: 287.01 ms
+
+Canine:
+  Queries evaluated: 1500
+  MRR: 0.0269
+  Recall@1: 0.0140
+  Recall@5: 0.0359
+  Recall@10: 0.0471
+  Recall@15: 0.0570
+  Precision@1: 0.0153
+  Precision@5: 0.0085
+  Precision@10: 0.0056
+  Precision@15: 0.0044
+  Avg Embedding Time: 0.53 ms
+  Avg Retrieval Time: 226.14 ms
+  Avg Total Time: 226.68 ms
+
+BPE-LSTM-Trained:
+  Queries evaluated: 1500
+  MRR: 0.0014
+  Recall@1: 0.0010
+  Recall@5: 0.0010
+  Recall@10: 0.0010
+  Recall@15: 0.0017
+  Precision@1: 0.0013
+  Precision@5: 0.0003
+  Precision@10: 0.0001
+  Precision@15: 0.0001
+  Avg Embedding Time: 0.05 ms
+  Avg Retrieval Time: 39.39 ms
+  Avg Total Time: 39.44 ms
+
+BPE-Transformer-Trained:
+  Queries evaluated: 1500
+  MRR: 0.0015
+  Recall@1: 0.0010
+  Recall@5: 0.0013
+  Recall@10: 0.0013
+  Recall@15: 0.0020
+  Precision@1: 0.0013
+  Precision@5: 0.0004
+  Precision@10: 0.0002
+  Precision@15: 0.0002
+  Avg Embedding Time: 0.04 ms
+  Avg Retrieval Time: 38.23 ms
+  Avg Total Time: 38.27 ms
+
+BPE-Pretrained:
+  Queries evaluated: 1500
+  MRR: 0.0074
+  Recall@1: 0.0026
+  Recall@5: 0.0082
+  Recall@10: 0.0114
+  Recall@15: 0.0153
+  Precision@1: 0.0040
+  Precision@5: 0.0023
+  Precision@10: 0.0015
+  Precision@15: 0.0014
+  Avg Embedding Time: 0.29 ms
+  Avg Retrieval Time: 226.10 ms
+  Avg Total Time: 226.39 ms
+
+BERT-MiniLM:
+  Queries evaluated: 1500
+  MRR: 0.5142
+  Recall@1: 0.3104
+  Recall@5: 0.6924
+  Recall@10: 0.8077
+  Recall@15: 0.8689
+  Precision@1: 0.3520
+  Precision@5: 0.1624
+  Precision@10: 0.0963
+  Precision@15: 0.0697
+  Avg Embedding Time: 0.12 ms
+  Avg Retrieval Time: 90.09 ms
+  Avg Total Time: 90.22 ms
