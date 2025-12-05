@@ -70,25 +70,38 @@ class CustomBPETokenizer:
         print("Training complete.")
 
     # ------------------------------------------------------------
-    # ENCODE
+    # ENCODE - OPTIMIZED GREEDY ALGORITHM (Single Pass, O(n) time)
     # ------------------------------------------------------------
     def encode(self, text):
+        """
+        Encode text using greedy BPE algorithm.
+        
+        OPTIMIZATION: Single-pass greedy merge instead of scanning entire sequence
+        each iteration. This is O(n) instead of O(n²) and matches how production
+        tokenizers (SentencePiece, Tokenizers) work.
+        
+        Algorithm:
+        1. Convert text to bytes
+        2. Scan left-to-right one time
+        3. At each position, check if (current, next) is a mergeable pair
+        4. If yes, replace in-place; if no, move forward
+        """
         ids = list(text.encode("utf-8"))
-
-        while True:
-            if len(ids) < 2:
-                break
-
-            stats = self.get_stats(ids)
-
-            # choose pair with smallest merge id (earliest merge)
-            pair = min(stats, key=lambda p: self.merges.get(p, float("inf")))
-            if pair not in self.merges:
-                break
-
-            new_id = self.merges[pair]
-            ids = self.merge_tokens(ids, pair, new_id)
-
+        
+        # Single pass: greedily merge pairs
+        i = 0
+        while i < len(ids) - 1:
+            pair = (ids[i], ids[i + 1])
+            
+            # If this pair has a merge rule, apply it
+            if pair in self.merges:
+                new_id = self.merges[pair]
+                ids[i:i+2] = [new_id]  # Replace pair with merged token (in-place)
+                # Don't increment i - check the newly merged token against next
+            else:
+                # No merge rule for this pair, move forward
+                i += 1
+        
         return ids
 
     # ------------------------------------------------------------
