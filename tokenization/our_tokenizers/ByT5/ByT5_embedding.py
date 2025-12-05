@@ -64,7 +64,7 @@ class ByT5Embedder:
             return_tensors='pt'
         ).to(self.device)
         
-        # B. Inference (encoder only)
+        # B. Inference + Pooling + Normalization all within no_grad context
         with torch.no_grad():
             # For T5, we need to use the model's encoder directly with proper method
             outputs = self.model.encoder(
@@ -72,14 +72,14 @@ class ByT5Embedder:
                 attention_mask=inputs['attention_mask'],
                 return_dict=True
             )
+            
+            # C. Pooling (collapse sequence to single vector)
+            sentence_embeddings = self._mean_pooling(outputs, inputs['attention_mask'])
+            
+            # D. Normalize (L2 normalization for cosine similarity)
+            sentence_embeddings = torch.nn.functional.normalize(sentence_embeddings, p=2, dim=1)
         
-        # C. Pooling (collapse sequence to single vector)
-        sentence_embeddings = self._mean_pooling(outputs, inputs['attention_mask'])
-        
-        # D. Normalize (L2 normalization for cosine similarity)
-        sentence_embeddings = torch.nn.functional.normalize(sentence_embeddings, p=2, dim=1)
-        
-        # Return as Python list
+        # Return as Python list (only final step on CPU)
         return sentence_embeddings[0].cpu().tolist()
     
     def generate_embeddings_batch(self, texts: List[str]) -> List[List[float]]:
@@ -101,21 +101,21 @@ class ByT5Embedder:
             return_tensors='pt'
         ).to(self.device)
         
-        # B. Batch Inference
+        # B. Batch Inference + Pooling + Normalization all within no_grad context
         with torch.no_grad():
             outputs = self.model.encoder(
                 input_ids=inputs['input_ids'],
                 attention_mask=inputs['attention_mask'],
                 return_dict=True
             )
+            
+            # C. Pooling for all sequences
+            sentence_embeddings = self._mean_pooling(outputs, inputs['attention_mask'])
+            
+            # D. Normalize all embeddings
+            sentence_embeddings = torch.nn.functional.normalize(sentence_embeddings, p=2, dim=1)
         
-        # C. Pooling for all sequences
-        sentence_embeddings = self._mean_pooling(outputs, inputs['attention_mask'])
-        
-        # D. Normalize all embeddings
-        sentence_embeddings = torch.nn.functional.normalize(sentence_embeddings, p=2, dim=1)
-        
-        # Return as list of lists
+        # Return as list of lists (only final step on CPU)
         return sentence_embeddings.cpu().tolist()
     
     @property

@@ -65,12 +65,12 @@ class CanineEmbedder:
         # B. Inference
         with torch.no_grad():
             outputs = self.model(**inputs)
-        
-        # C. Pooling (collapse sequence to single vector)
-        sentence_embeddings = self._mean_pooling(outputs, inputs['attention_mask'])
-        
-        # D. Normalize (L2 normalization for cosine similarity)
-        sentence_embeddings = torch.nn.functional.normalize(sentence_embeddings, p=2, dim=1)
+            
+            # C. Pooling (collapse sequence to single vector)
+            sentence_embeddings = self._mean_pooling(outputs, inputs['attention_mask'])
+            
+            # D. Normalize (L2 normalization for cosine similarity)
+            sentence_embeddings = torch.nn.functional.normalize(sentence_embeddings, p=2, dim=1)
         
         # Return as Python list
         return sentence_embeddings[0].cpu().tolist()
@@ -97,12 +97,12 @@ class CanineEmbedder:
         # B. Batch Inference
         with torch.no_grad():
             outputs = self.model(**inputs)
-        
-        # C. Pooling for all sequences
-        sentence_embeddings = self._mean_pooling(outputs, inputs['attention_mask'])
-        
-        # D. Normalize all embeddings
-        sentence_embeddings = torch.nn.functional.normalize(sentence_embeddings, p=2, dim=1)
+            
+            # C. Pooling for all sequences
+            sentence_embeddings = self._mean_pooling(outputs, inputs['attention_mask'])
+            
+            # D. Normalize all embeddings
+            sentence_embeddings = torch.nn.functional.normalize(sentence_embeddings, p=2, dim=1)
         
         # Return as list of lists
         return sentence_embeddings.cpu().tolist()
