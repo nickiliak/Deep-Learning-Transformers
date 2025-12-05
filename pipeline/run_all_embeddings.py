@@ -264,6 +264,21 @@ def run_pipeline_for_model(model_config: dict, clear_existing: bool = True):
                 session.commit()
 
     print(f"✅ {model_config['name']} completed successfully!")
+    
+    # Memory cleanup: explicitly delete embedder and clear GPU cache
+    print(f"--- Cleaning up memory for {model_config['name']} ---")
+    del embedder
+    
+    # Clear PyTorch CUDA cache if GPU is available
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+        print(f"    GPU cache cleared")
+    
+    # Force Python garbage collection
+    import gc
+    gc.collect()
+    print(f"    Memory cleanup complete")
+    
     return True
 
 
