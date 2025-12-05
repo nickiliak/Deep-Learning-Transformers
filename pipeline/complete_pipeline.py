@@ -127,9 +127,12 @@ def stage_train_lstm(config: PipelineConfig):
         print(f"  Sequence length: {config.lstm_seq_length}")
         print(f"  Learning rate: {config.lstm_learning_rate}")
         
-        # Note: train_lstm_main() currently doesn't accept parameters
-        # You can modify train_bpe_lstm.py to accept these parameters if needed
-        train_lstm_main()
+        train_lstm_main(
+            batch_size=config.lstm_batch_size,
+            seq_length=config.lstm_seq_length,
+            num_epochs=config.lstm_epochs,
+            learning_rate=config.lstm_learning_rate
+        )
         print(f"\n[OK] LSTM training complete")
     except Exception as e:
         print(f"\n[ERROR] LSTM training failed: {e}")
@@ -158,9 +161,12 @@ def stage_train_transformer(config: PipelineConfig):
         print(f"  Sequence length: {config.transformer_seq_length}")
         print(f"  Learning rate: {config.transformer_learning_rate}")
         
-        # Note: train_transformer_main() currently doesn't accept parameters
-        # You can modify train_bpe_transformer.py to accept these parameters if needed
-        train_transformer_main()
+        train_transformer_main(
+            batch_size=config.transformer_batch_size,
+            seq_length=config.transformer_seq_length,
+            num_epochs=config.transformer_epochs,
+            learning_rate=config.transformer_learning_rate
+        )
         print(f"\n[OK] Transformer training complete")
     except Exception as e:
         print(f"\n[ERROR] Transformer training failed: {e}")
@@ -180,10 +186,20 @@ def stage_embeddings(config: PipelineConfig):
     print("STAGE 4: EMBEDDINGS GENERATION")
     print("="*80)
     
-    from pipeline.run_all_embeddings import main as embeddings_main
+    from pipeline.run_all_embeddings import run_embeddings_pipeline
     
     try:
-        embeddings_main()
+        # Prepare models to run (all by default)
+        models = ['byt5', 'canine', 'bpe-lstm', 'bpe-transformer', 'bert']
+        
+        print(f"\nParameters:")
+        print(f"  Models: {', '.join(models)}")
+        print(f"  Clear tables: True")
+        
+        results = run_embeddings_pipeline(
+            models=models,
+            clear_existing=True
+        )
         print(f"\n[OK] Embeddings generation complete")
     except Exception as e:
         print(f"\n[ERROR] Embeddings generation failed: {e}")
@@ -259,12 +275,12 @@ if __name__ == "__main__":
     # CONFIGURE YOUR PIPELINE HERE
     # =========================================================================
     config = PipelineConfig(
-        skip_preprocess=False,
+        skip_preprocess=True,
         skip_tokenizer=True,
-        skip_lstm=False,
-        skip_transformer=False,
+        skip_lstm=True,
+        skip_transformer=True,
         skip_embeddings=False,
-        skip_evaluation=False,
+        skip_evaluation=True,
         corpus_size=100,
         tokenizer_vocab_size=2000,
         lstm_epochs=1,

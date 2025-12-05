@@ -110,7 +110,16 @@ def calculate_bits_per_character(model, tokenizer, val_loader, device):
     return bpc.item()
 
 
-def main():
+def main(batch_size=32, seq_length=128, num_epochs=50, learning_rate=0.001):
+    """
+    Train Transformer Language Model with BPE Tokenization
+    
+    Args:
+        batch_size: Batch size for training
+        seq_length: Sequence length for language modeling
+        num_epochs: Number of training epochs
+        learning_rate: Learning rate for optimizer
+    """
     print("="*60)
     print("Training Transformer Language Model with BPE Tokenization")
     print("="*60)
@@ -119,10 +128,10 @@ def main():
     CORPUS_PATH = os.path.join(repo_root, "data_filtered", "corpus_filtered.jsonl")
     BPE_MODEL_PATH = os.path.join(repo_root, "tokenization", "vocabularies", "bpe_tokenizer.json")
     
-    BATCH_SIZE = 32
-    SEQ_LENGTH = 128
-    NUM_EPOCHS = 50
-    LEARNING_RATE = 0.001
+    BATCH_SIZE = batch_size
+    SEQ_LENGTH = seq_length
+    NUM_EPOCHS = num_epochs
+    LEARNING_RATE = learning_rate
     MAX_DOCS = 5000  # Use same as LSTM for fair comparison
     
     # Device

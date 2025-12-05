@@ -258,6 +258,60 @@ def run_pipeline_for_model(model_config: dict, clear_existing: bool = True):
     return True
 
 
+def run_embeddings_pipeline(
+    models=None,
+    clear_existing=True,
+):
+    """
+    Run embedding pipeline programmatically (without argparse)
+    
+    Args:
+        models: List of models to run. If None, runs all models.
+                Options: 'byt5', 'canine', 'bpe-lstm', 'bpe-transformer', 'bert'
+        clear_existing: Whether to clear existing tables before inserting
+    """
+    # Check device
+    check_device()
+    
+    # Default to all models if not specified
+    if models is None:
+        models = ['byt5', 'canine', 'bpe-lstm', 'bpe-transformer', 'bert']
+    
+    # Ensure models is a list
+    if isinstance(models, str):
+        models = [models]
+    
+    # Validate model names
+    valid_models = ['byt5', 'canine', 'bpe-lstm', 'bpe-transformer', 'bert']
+    models_to_run = [m for m in models if m in valid_models]
+    
+    if not models_to_run:
+        print(f"⚠️  No valid models specified. Valid options: {', '.join(valid_models)}")
+        return {}
+    
+    print(f"\n🚀 Running pipeline for {len(models_to_run)} model(s): {', '.join(models_to_run)}")
+    print(f"Dataset: {DATASET_PATH}")
+    print(f"Database: {DATABASE_URL}")
+    print(f"Clear existing tables: {clear_existing}\n")
+    
+    # Run pipeline for each model
+    results = {}
+    for model_key in models_to_run:
+        success = run_pipeline_for_model(MODELS[model_key], clear_existing=clear_existing)
+        results[model_key] = success
+    
+    # Print summary
+    print("\n" + "="*60)
+    print("PIPELINE SUMMARY")
+    print("="*60)
+    for model_key, success in results.items():
+        status = "✅ SUCCESS" if success else "❌ FAILED"
+        print(f"{MODELS[model_key]['name']}: {status}")
+    
+    print("\n🎉 All pipelines completed!")
+    return results
+
+
 def main():
     parser = argparse.ArgumentParser(description='Run embedding pipeline for multiple models')
     
