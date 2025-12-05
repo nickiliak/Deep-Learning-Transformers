@@ -35,7 +35,7 @@ DATABASE_URL = os.environ.get(
 )
 QUERIES_PATH = os.path.join(repo_root, "data_filtered", "queries_filtered.jsonl")
 
-# Model configurations
+# Model configurations - MUST match table names created by run_all_embeddings.py
 MODELS = [
     {
         'name': 'ByT5',
@@ -43,7 +43,6 @@ MODELS = [
         'model_id': 'google/byt5-small',
         'table_name': 'byt5_small',
         'vector_dim': 1472,
-        'is_bpe': False
     },
     {
         'name': 'Canine',
@@ -51,30 +50,27 @@ MODELS = [
         'model_id': 'google/canine-s',
         'table_name': 'canine_s',
         'vector_dim': 768,
-        'is_bpe': False
-    },
-    {   'name': 'BPE_Pretrained',
-        'embedder_class': BPEPretrainedEmbedder,
-        'model_id': 'roberta-base',
-        'table_name': 'bpe-pretrained',
-        'vector_dim': 768,
-        'is_bpe': False
     },
     {
         'name': 'BPE-LSTM-Trained',
         'embedder_class': BPELSTMEmbedder,
-        'bpe_model_path': os.path.join(repo_root, 'tokenization', 'vocabularies', 'bpe_tokenizer.json'),
-        'table_name': 'bpe-lstm',  # Match pipeline table name
+        'model_path': os.path.join(repo_root, 'tokenization', 'vocabularies', 'bpe_tokenizer.json'),
+        'table_name': 'bpe-lstm',
         'vector_dim': 256,
-        'is_bpe': True
+    },
+    {
+        'name': 'BPE-Transformer-Trained',
+        'embedder_class': BPETransformerEmbedder,
+        'model_path': os.path.join(repo_root, 'tokenization', 'vocabularies', 'bpe_tokenizer.json'),
+        'table_name': 'bpe-transformer',
+        'vector_dim': 256,
     },
     {
         'name': 'BPE-Pretrained',
-        'embedder_class': BPETransformerEmbedder,
-        'bpe_model_path': os.path.join(repo_root, 'tokenization', 'vocabularies', 'bpe_tokenizer.json'),
-        'table_name': 'bpe-pretrained',  # Actual table name in database
+        'embedder_class': BPEPretrainedEmbedder,
+        'model_path': os.path.join(repo_root, 'tokenization', 'vocabularies', 'bpe_tokenizer.json'),
+        'table_name': 'bpe-pretrained',
         'vector_dim': 256,
-        'is_bpe': True
     },
     {
         'name': 'BERT-MiniLM',
@@ -82,7 +78,6 @@ MODELS = [
         'model_id': 'sentence-transformers/all-MiniLM-L6-v2',
         'table_name': 'bert_minilm',
         'vector_dim': 384,
-        'is_bpe': False
     }
 ]
 
