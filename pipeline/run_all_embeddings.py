@@ -70,7 +70,7 @@ MODELS = {
         'model_id': os.path.join(repo_root, 'tokenization', 'vocabularies', 'bpe_tokenizer.json'),
         'table_name': 'bpe-lstm',
         'vector_dim': 256,
-        'batch_size': 16,
+        'batch_size': 512,
     },
     'bpe-transformer': {
         'name': 'BPE-Transformer-Trained',
