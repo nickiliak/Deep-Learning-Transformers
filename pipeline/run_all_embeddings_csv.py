@@ -1,10 +1,10 @@
 """
-Run All Embeddings Pipeline - CSV Version
+Run All Embeddings Pipeline - CSV Version (Cleaned)
 Processes corpus with multiple embedding models and stores in CSV files.
+Includes text cleaning to prevent line breaks in CSV cells.
 
 Usage:
     python run_all_embeddings_csv.py --all
-    python run_all_embeddings_csv.py --bpe-lstm --bert
 """
 
 import sys
@@ -12,19 +12,19 @@ import os
 import argparse
 import json
 import csv
+import re  # Imported for regex text cleaning
 from typing import List
 from dotenv import load_dotenv
 import torch
 import platform
 from tqdm import tqdm
 
-# Add parent directory to path (repo root from pipeline folder)
+# Add parent directory to path
 repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 if repo_root not in sys.path:
     sys.path.insert(0, repo_root)
 
 # Import embedders
-# (Ensure these paths remain valid in your project structure)
 from tokenization.our_tokenizers.ByT5.ByT5_embedding import ByT5Embedder
 from tokenization.our_tokenizers.Canine.Canine_embedding import CanineEmbedder
 from tokenization.our_tokenizers.BPE.BPE_LSTM_embedding import BPELSTMEmbedder
@@ -43,7 +43,7 @@ MODELS = {
         'name': 'ByT5',
         'embedder_class': ByT5Embedder,
         'model_id': 'google/byt5-small',
-        'table_name': 'byt5_small', # This will be used as the filename
+        'table_name': 'byt5_small',
         'batch_size': 8,
     },
     'canine': {
@@ -79,7 +79,6 @@ MODELS = {
 def check_device():
     """Check and display available compute device"""
     print(f"PyTorch version: {torch.__version__}")
-    
     if torch.backends.mps.is_available():
         device = torch.device("mps")
         print("🚀 Running on MPS (Metal Performance Shaders) - M3 GPU Activated!")
@@ -89,51 +88,53 @@ def check_device():
     else:
         device = torch.device("cpu")
         print("⚠️ Running on CPU - Embeddings will be slow")
-
     return device
 
+def clean_text(text: str) -> str:
+    """
+    Cleans text to ensure it fits on a single line in the CSV.
+    1. Replaces newlines (\n), carriage returns (\r), and tabs (\t) with a single space.
+    2. Collapses multiple spaces into one.
+    """
+    if not text:
+        return ""
+    
+    # Regex explanation: \s+ matches any sequence of whitespace characters 
+    # (including \n, \r, \t, space). We replace them with a single space.
+    cleaned = re.sub(r'\s+', ' ', text)
+    
+    return cleaned.strip()
 
 def run_pipeline_for_model(model_config: dict):
-    """
-    Run embedding pipeline for a single model and save to CSV
-    """
+    """Run embedding pipeline for a single model and save to CSV"""
     print(f"\n{'='*60}")
     print(f"Processing: {model_config['name']}")
     print(f"{'='*60}")
     
-    # 1. Prepare output directory
     if not os.path.exists(OUTPUT_DIR):
         os.makedirs(OUTPUT_DIR)
-        print(f"Created directory: {OUTPUT_DIR}")
 
-    # 2. Define CSV filename
     filename = f"{model_config['table_name']}.csv"
     file_path = os.path.join(OUTPUT_DIR, filename)
     
-    # 3. Initialize ML Model
     try:
         embedder = model_config['embedder_class'](model_config['model_id'])
     except Exception as e:
         print(f"❌ Failed to load {model_config['name']}: {e}")
         return False
 
-    # 4. Process JSONL and Write to CSV
     if not os.path.exists(DATASET_PATH):
         print(f"Error: Dataset not found at {DATASET_PATH}")
         return False
 
-    print(f"--- Dataset: {DATASET_PATH} ---")
-    print(f"--- Output: {file_path} ---")
-
     text_buffer = []
     metadata_buffer = []
     
-    # Open CSV file in write mode ('w')
-    # newline='' is important to avoid extra blank lines on Windows
+    # Open CSV file with 'w' mode. newline='' prevents extra blank lines in Windows
     with open(file_path, mode='w', encoding='utf-8', newline='') as csvfile:
-        csv_writer = csv.writer(csvfile)
+        # Using quoting=csv.QUOTE_MINIMAL is standard, but CSV handles cleaned text better
+        csv_writer = csv.writer(csvfile, quoting=csv.QUOTE_MINIMAL)
         
-        # Write header
         header = ['id', 'title', 'text', 'embedding']
         csv_writer.writerow(header)
 
@@ -143,16 +144,19 @@ def run_pipeline_for_model(model_config: dict):
                     if not line.strip():
                         continue
 
-                    # Parse JSON
                     row = json.loads(line)
                     doc_id = row.get('_id')
-                    title = row.get('title', '')
-                    doc_text = row.get('text', '')
+                    
+                    # Apply cleaning function to title and text immediately
+                    title = clean_text(row.get('title', ''))
+                    doc_text = clean_text(row.get('text', ''))
 
                     if not doc_id:
                         continue
 
+                    # Concatenate for embedding generation
                     full_content = f"{title}: {doc_text}"
+                    
                     text_buffer.append(full_content)
                     metadata_buffer.append({'id': doc_id, 'title': title, 'text': doc_text})
 
@@ -163,16 +167,14 @@ def run_pipeline_for_model(model_config: dict):
                         else:
                             vectors = [embedder.generate_embedding(text) for text in text_buffer]
                         
-                        # Write rows to CSV
                         rows_to_write = []
                         for meta, vector in zip(metadata_buffer, vectors):
-                            # Convert vector (list of floats) to JSON string for storage in a single cell
+                            # Dump vector as JSON string so it stays in one cell
                             vector_str = json.dumps(vector) 
                             rows_to_write.append([meta['id'], meta['title'], meta['text'], vector_str])
                         
                         csv_writer.writerows(rows_to_write)
                         
-                        # Clear buffers
                         text_buffer = []
                         metadata_buffer = []
 
@@ -181,7 +183,7 @@ def run_pipeline_for_model(model_config: dict):
                 except Exception as e:
                     print(f"Error processing doc: {e}")
 
-            # Process remaining items in buffer if any
+            # Process remaining items
             if text_buffer:
                 if hasattr(embedder, 'generate_embeddings_batch'):
                     vectors = embedder.generate_embeddings_batch(text_buffer)
@@ -197,7 +199,6 @@ def run_pipeline_for_model(model_config: dict):
 
     print(f"✅ {model_config['name']} completed successfully! Saved to {filename}")
     return True
-
 
 def main():
     parser = argparse.ArgumentParser(description='Run embedding pipeline to CSV')

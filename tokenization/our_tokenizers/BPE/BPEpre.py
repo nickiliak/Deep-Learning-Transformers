@@ -18,7 +18,7 @@ class BPEPretrainedEmbedder:
     def __init__(self, model_id: str = "roberta-base", max_length: int = 512):
         print(f"--- Loading pretrained BPE model: {model_id} ---")
 
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.device = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
         print(f"Using device: {self.device}")
 
         self.tokenizer = AutoTokenizer.from_pretrained(model_id)
