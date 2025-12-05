@@ -231,15 +231,25 @@ def run_pipeline_for_model(model_config: dict, clear_existing: bool = True):
                             )
                             data_buffer.append(record)
                         
-                        # Clear buffers
-                        text_buffer = []
-                        metadata_buffer = []
+                        # ===== MEMORY CLEANUP: Clear text data after embeddings are generated =====
+                        # Once vectors are created, we no longer need the raw text
+                        del vectors  # Delete embedding vectors from memory
+                        text_buffer = []  # Clear text buffer
+                        metadata_buffer = []  # Clear metadata buffer
+                        # ===== END MEMORY CLEANUP =====
 
                     # Batch Commit to DB
                     if len(data_buffer) >= BATCH_SIZE:
                         session.add_all(data_buffer)
                         session.commit()
+                        # ===== MEMORY CLEANUP: After committing to DB, clear the data buffer =====
+                        # Data is now safely in database, no longer need in RAM
                         data_buffer = []
+                        # Force garbage collection to free memory immediately
+                        if BATCH_SIZE % 100 == 0:  # Every 100 batches
+                            import gc
+                            gc.collect()
+                        # ===== END MEMORY CLEANUP =====
 
                 except json.JSONDecodeError:
                     print(f"Skipping invalid JSON line")
@@ -272,6 +282,9 @@ def run_pipeline_for_model(model_config: dict, clear_existing: bool = True):
     # Memory cleanup: explicitly delete embedder and clear GPU cache
     print(f"--- Cleaning up memory for {model_config['name']} ---")
     
+    # Call embedder's cleanup method (moves model to CPU, clears cache)
+    embedder.cleanup()
+    
     # Close session and engine to release database connections
     session.close()
     engine.dispose()
@@ -286,12 +299,10 @@ def run_pipeline_for_model(model_config: dict, clear_existing: bool = True):
     import gc
     gc.collect()
     
-    # Clear PyTorch CUDA cache if GPU is available
+    # Final GPU sync to ensure memory is freed
     if torch.cuda.is_available():
-        torch.cuda.empty_cache()
-        # Synchronize GPU to ensure cache is actually cleared
         torch.cuda.synchronize()
-        print(f"    GPU cache cleared and synchronized")
+        print(f"    GPU fully cleared and synchronized")
     
     print(f"    Memory cleanup complete\n")
     

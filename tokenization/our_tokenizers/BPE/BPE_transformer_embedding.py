@@ -167,3 +167,10 @@ class BPETransformerEmbedder:
     def embedding_dimension(self) -> int:
         """Return embedding dimension"""
         return self.d_model
+    
+    def cleanup(self):
+        """Explicitly move model off GPU and clean up memory."""
+        if torch.cuda.is_available():
+            self.model = self.model.cpu()
+            torch.cuda.empty_cache()
+            torch.cuda.synchronize()

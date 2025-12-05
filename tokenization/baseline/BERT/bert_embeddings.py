@@ -95,3 +95,10 @@ class BertEmbedder:
     def embedding_dimension(self) -> int:
         """Return the output embedding dimension (384 for MiniLM)."""
         return self.model.config.hidden_size
+    
+    def cleanup(self):
+        """Explicitly move model off GPU and clean up memory."""
+        if torch.cuda.is_available():
+            self.model = self.model.cpu()
+            torch.cuda.empty_cache()
+            torch.cuda.synchronize()
