@@ -88,9 +88,9 @@ MODELS = {
     'bpe-pretrained': {
         'name': 'BPE-Pretrained',
         'embedder_class': BPEPretrainedEmbedder,
-        'model_id': os.path.join(repo_root, 'tokenization', 'vocabularies', 'bpe_tokenizer.json'),
+        'model_id': 'roberta-base',
         'table_name': 'bpe-pretrained',
-        'vector_dim': 256,
+        'vector_dim': 768,
         'batch_size': 64,
     },
     'bert': {
