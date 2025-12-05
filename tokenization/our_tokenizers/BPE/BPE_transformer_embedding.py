@@ -86,19 +86,30 @@ class BPETransformerEmbedder:
         print(f"✅ Loaded trained Transformer (embedding dimension: {self.d_model})")
 
     def _encode_and_pad(self, texts: List[str]):
-        """Tokenize and pad sequences"""
-        all_ids = []
+        """
+        Encode texts with BPE and pad to BATCH MAX LENGTH, not global max_length.
+        This is critical for performance - if batch has short texts (avg 50 tokens),
+        we pad to 50, not 512. This gives 10x speedup on small batches!
+        """
+        # 1. Encode all and truncate to hard limit
+        encoded = []
         for t in texts:
             ids = self.tokenizer.encode(t)
-
             if len(ids) > self.max_length:
                 ids = ids[:self.max_length]
-            else:
-                ids = ids + [self.pad_id] * (self.max_length - len(ids))
-
-            all_ids.append(ids)
-
-        input_ids = torch.tensor(all_ids, dtype=torch.long, device=self.device)
+            encoded.append(ids)
+        
+        # 2. Find batch max length (not global!)
+        batch_max_len = max(len(ids) for ids in encoded) if encoded else 1
+        
+        # 3. Pad to batch max only
+        padded = []
+        for ids in encoded:
+            pad_len = batch_max_len - len(ids)
+            padded.append(ids + [self.pad_id] * pad_len)
+        
+        # 4. Create tensors on GPU directly
+        input_ids = torch.tensor(padded, dtype=torch.long, device=self.device)
         attention_mask = (input_ids != self.pad_id).long()
 
         return input_ids, attention_mask
@@ -112,36 +123,32 @@ class BPETransformerEmbedder:
 
     def generate_embeddings_batch(self, texts: List[str]) -> List[List[float]]:
         """
-        Generate embeddings for batch of texts
-        
-        Args:
-            texts: List of text strings
-        
-        Returns:
-            List of embedding vectors (normalized)
+        Generate embeddings for batch of texts.
+        CRITICAL OPTIMIZATIONS:
+        1. Dynamic padding (batch_max_len, not global max_length)
+        2. Skip final linear layer (not needed for embeddings)
+        3. Keep on GPU until final output
+        4. Use torch.no_grad() context for inference efficiency
         """
         input_ids, mask = self._encode_and_pad(texts)
 
         with torch.no_grad():
-            # Get Transformer encoder output
-            # We need the hidden states before the final projection
-            # Access the transformer encoder output directly
-            batch_size, seq_len = input_ids.shape
-            
             # Embed tokens with positional encoding
             import math
             embedded = self.encoder.embedding(input_ids) * math.sqrt(self.encoder.d_model)
             embedded = self.encoder.pos_encoder(embedded)
             embedded = self.encoder.dropout(embedded)
             
-            # Pass through Transformer without causal mask for embedding extraction
+            # Pass through Transformer encoder
             transformer_output = self.encoder.transformer_encoder(embedded)
             
-            # Mean pool the transformer output
+            # Mean pool the transformer output on GPU
             pooled = self._mean_pool(transformer_output, mask)
-
-        # L2 normalize
-        normalized = torch.nn.functional.normalize(pooled, p=2, dim=1)
+            
+            # Normalize on GPU
+            normalized = torch.nn.functional.normalize(pooled, p=2, dim=1)
+        
+        # Only move to CPU at the very end for output
         return normalized.cpu().tolist()
 
     def generate_embedding(self, text: str) -> List[float]:
