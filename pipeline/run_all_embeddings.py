@@ -372,6 +372,7 @@ def main():
     parser.add_argument('--canine', action='store_true', help='Run Canine')
     parser.add_argument('--bpe-lstm', action='store_true', help='Run BPE-LSTM')
     parser.add_argument('--bpe-transformer', action='store_true', help='Run BPE-Transformer')
+    parser.add_argument('--bpe-pretrained', action='store_true', help='Run BPE-Pretrained')
     parser.add_argument('--bert', action='store_true', help='Run BERT-MiniLM')
     
     # Options to skip specific models (useful with --all)
@@ -379,6 +380,7 @@ def main():
     parser.add_argument('--skip-canine', action='store_true', help='Skip Canine')
     parser.add_argument('--skip-bpe-lstm', action='store_true', help='Skip BPE-LSTM')
     parser.add_argument('--skip-bpe-transformer', action='store_true', help='Skip BPE-Transformer')
+    parser.add_argument('--skip-bpe-pretrained', action='store_true', help='Skip BPE-Pretrained')
     parser.add_argument('--skip-bert', action='store_true', help='Skip BERT-MiniLM')
     
     # Other options
@@ -402,6 +404,8 @@ def main():
             models_to_run.append('bpe-lstm')
         if not args.skip_bpe_transformer:
             models_to_run.append('bpe-transformer')
+        if not args.skip_bpe_pretrained:
+            models_to_run.append('bpe-pretrained')
         if not args.skip_bert:
             models_to_run.append('bert')
     else:
@@ -414,6 +418,8 @@ def main():
             models_to_run.append('bpe-lstm')
         if args.bpe_transformer:
             models_to_run.append('bpe-transformer')
+        if args.bpe_pretrained:
+            models_to_run.append('bpe-pretrained')
         if args.bert:
             models_to_run.append('bert')
     
