@@ -10,6 +10,10 @@ Usage:
 
 import sys
 import os
+
+# Set PyTorch memory allocation to reduce fragmentation BEFORE importing torch
+os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'expandable_segments:True'
+
 import argparse
 from typing import Type, List
 from dotenv import load_dotenv
@@ -267,17 +271,29 @@ def run_pipeline_for_model(model_config: dict, clear_existing: bool = True):
     
     # Memory cleanup: explicitly delete embedder and clear GPU cache
     print(f"--- Cleaning up memory for {model_config['name']} ---")
-    del embedder
     
-    # Clear PyTorch CUDA cache if GPU is available
-    if torch.cuda.is_available():
-        torch.cuda.empty_cache()
-        print(f"    GPU cache cleared")
+    # Close session and engine to release database connections
+    session.close()
+    engine.dispose()
+    
+    # Delete embedder and related objects
+    del embedder
+    del engine
+    del session
+    del TableClass
     
     # Force Python garbage collection
     import gc
     gc.collect()
-    print(f"    Memory cleanup complete")
+    
+    # Clear PyTorch CUDA cache if GPU is available
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+        # Synchronize GPU to ensure cache is actually cleared
+        torch.cuda.synchronize()
+        print(f"    GPU cache cleared and synchronized")
+    
+    print(f"    Memory cleanup complete\n")
     
     return True
 
