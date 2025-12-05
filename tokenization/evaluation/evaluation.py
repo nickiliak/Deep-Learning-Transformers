@@ -43,6 +43,7 @@ MODELS = [
         'model_id': 'google/byt5-small',
         'table_name': 'byt5_small',
         'vector_dim': 1472,
+        'is_bpe': False,
     },
     {
         'name': 'Canine',
@@ -50,20 +51,23 @@ MODELS = [
         'model_id': 'google/canine-s',
         'table_name': 'canine_s',
         'vector_dim': 768,
+        'is_bpe': False,
     },
     {
         'name': 'BPE-LSTM-Trained',
         'embedder_class': BPELSTMEmbedder,
-        'model_path': os.path.join(repo_root, 'tokenization', 'vocabularies', 'bpe_tokenizer.json'),
+        'model_id': os.path.join(repo_root, 'tokenization', 'vocabularies', 'bpe_tokenizer.json'),
         'table_name': 'bpe-lstm',
         'vector_dim': 256,
+        'is_bpe': True,
     },
     {
         'name': 'BPE-Transformer-Trained',
         'embedder_class': BPETransformerEmbedder,
-        'model_path': os.path.join(repo_root, 'tokenization', 'vocabularies', 'bpe_tokenizer.json'),
+        'model_id': os.path.join(repo_root, 'tokenization', 'vocabularies', 'bpe_tokenizer.json'),
         'table_name': 'bpe-transformer',
         'vector_dim': 256,
+        'is_bpe': True,
     },
     {
         'name': 'BPE-Pretrained',
@@ -71,6 +75,7 @@ MODELS = [
         'model_id': 'roberta-base',
         'table_name': 'bpe-pretrained',
         'vector_dim': 768,
+        'is_bpe': False,
     },
     {
         'name': 'BERT-MiniLM',
@@ -78,6 +83,7 @@ MODELS = [
         'model_id': 'sentence-transformers/all-MiniLM-L6-v2',
         'table_name': 'bert_minilm',
         'vector_dim': 384,
+        'is_bpe': False,
     }
 ]
 
@@ -212,13 +218,15 @@ def evaluate_model(model_config: Dict, queries: List[Dict], k_values: List[int],
     
     # Initialize embedder - standard loading without explicit device handling
     try:
+        # Check if it's a trained BPE model (uses file path)
         if model_config.get('is_bpe', False):
-            # BPE uses bpe_model_path parameter
+            # Trained BPE models use model_id as the bpe_model_path
             embedder = model_config['embedder_class'](
-                bpe_model_path=model_config['bpe_model_path']
+                bpe_model_path=model_config['model_id']
             )
         else:
-            # ByT5, Canine, BERT use model_id parameter
+            # All other models use model_id parameter directly
+            embedder = model_config['embedder_class'](model_config['model_id'])
             embedder = model_config['embedder_class'](model_config['model_id'])
     except Exception as e:
         print(f"❌ Failed to load {model_config['name']}: {e}")
