@@ -56,7 +56,7 @@ MODELS = [
     {   'name': 'BPE_Pretrained',
         'embedder_class': BPEPretrainedEmbedder,
         'model_id': 'roberta-base',
-        'table_name': 'BPE',
+        'table_name': 'bpe-pretrained',
         'vector_dim': 768,
         'is_bpe': False
     },
