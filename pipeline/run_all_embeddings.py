@@ -55,7 +55,7 @@ MODELS = {
         'model_id': 'google/byt5-small',
         'table_name': 'byt5_small',
         'vector_dim': 1472,
-        'batch_size': 256,  # Smaller batch for large model
+        'batch_size': 64,  # Smaller batch for large model
     },
     'canine': {
         'name': 'Canine',
@@ -63,7 +63,7 @@ MODELS = {
         'model_id': 'google/canine-s',
         'table_name': 'canine_s',
         'vector_dim': 768,
-        'batch_size': 256,
+        'batch_size': 64,
     },
     'bpe-lstm': {
         'name': 'BPE-LSTM-Trained',
@@ -71,7 +71,7 @@ MODELS = {
         'model_id': os.path.join(repo_root, 'tokenization', 'vocabularies', 'bpe_tokenizer.json'),
         'table_name': 'bpe-lstm',
         'vector_dim': 256,
-        'batch_size': 256,
+        'batch_size': 64,
     },
     'bpe-transformer': {
         'name': 'BPE-Transformer-Trained',
@@ -79,7 +79,7 @@ MODELS = {
         'model_id': os.path.join(repo_root, 'tokenization', 'vocabularies', 'bpe_tokenizer.json'),
         'table_name': 'bpe-transformer',
         'vector_dim': 256,
-        'batch_size': 256,
+        'batch_size': 64,
     },
     'bpe-pretrained': {
         'name': 'BPE-Pretrained',
@@ -87,7 +87,7 @@ MODELS = {
         'model_id': os.path.join(repo_root, 'tokenization', 'vocabularies', 'bpe_tokenizer.json'),
         'table_name': 'bpe-pretrained',
         'vector_dim': 256,
-        'batch_size': 256,
+        'batch_size': 64,
     },
     'bert': {
         'name': 'BERT-MiniLM',
@@ -95,7 +95,7 @@ MODELS = {
         'model_id': 'sentence-transformers/all-MiniLM-L6-v2',
         'table_name': 'bert_minilm',
         'vector_dim': 384,
-        'batch_size': 32,
+        'batch_size': 64,
     }
 }
 
