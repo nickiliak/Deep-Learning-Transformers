@@ -162,6 +162,6 @@ class BPELSTMEmbedder:
     def cleanup(self):
         """Explicitly move model off GPU and clean up memory."""
         if torch.cuda.is_available():
-            self.model = self.model.cpu()
+            self.encoder = self.encoder.cpu()
             torch.cuda.empty_cache()
             torch.cuda.synchronize()
