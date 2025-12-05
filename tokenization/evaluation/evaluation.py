@@ -37,45 +37,45 @@ QUERIES_PATH = os.path.join(repo_root, "data_filtered", "queries_filtered.jsonl"
 
 # Model configurations
 MODELS = [
-    # {
-    #     'name': 'ByT5',
-    #     'embedder_class': ByT5Embedder,
-    #     'model_id': 'google/byt5-small',
-    #     'table_name': 'byt5_small',
-    #     'vector_dim': 1472,
-    #     'is_bpe': False
-    # },
-    # {
-    #     'name': 'Canine',
-    #     'embedder_class': CanineEmbedder,
-    #     'model_id': 'google/canine-s',
-    #     'table_name': 'canine_s',
-    #     'vector_dim': 768,
-    #     'is_bpe': False
-    # },
-    # {   'name': 'BPE_Pretrained',
-    #     'embedder_class': BPEPretrainedEmbedder,
-    #     'model_id': 'roberta-base',
-    #     'table_name': 'BPE',
-    #     'vector_dim': 768,
-    #     'is_bpe': False
-    # },
-    # {
-    #     'name': 'BPE-LSTM-Trained',
-    #     'embedder_class': BPELSTMEmbedder,
-    #     'bpe_model_path': os.path.join(repo_root, 'tokenization', 'vocabularies', 'bpe_tokenizer.json'),
-    #     'table_name': 'bpe-lstm',  # Match pipeline table name
-    #     'vector_dim': 256,
-    #     'is_bpe': True
-    # },
-    # {
-    #     'name': 'BPE-Transformer-Trained',
-    #     'embedder_class': BPETransformerEmbedder,
-    #     'bpe_model_path': os.path.join(repo_root, 'tokenization', 'vocabularies', 'bpe_tokenizer.json'),
-    #     'table_name': 'bpe-transformer',  # Actual table name in database
-    #     'vector_dim': 256,
-    #     'is_bpe': True
-    # },
+    {
+        'name': 'ByT5',
+        'embedder_class': ByT5Embedder,
+        'model_id': 'google/byt5-small',
+        'table_name': 'byt5_small',
+        'vector_dim': 1472,
+        'is_bpe': False
+    },
+    {
+        'name': 'Canine',
+        'embedder_class': CanineEmbedder,
+        'model_id': 'google/canine-s',
+        'table_name': 'canine_s',
+        'vector_dim': 768,
+        'is_bpe': False
+    },
+    {   'name': 'BPE_Pretrained',
+        'embedder_class': BPEPretrainedEmbedder,
+        'model_id': 'roberta-base',
+        'table_name': 'BPE',
+        'vector_dim': 768,
+        'is_bpe': False
+    },
+    {
+        'name': 'BPE-LSTM-Trained',
+        'embedder_class': BPELSTMEmbedder,
+        'bpe_model_path': os.path.join(repo_root, 'tokenization', 'vocabularies', 'bpe_tokenizer.json'),
+        'table_name': 'bpe-lstm',  # Match pipeline table name
+        'vector_dim': 256,
+        'is_bpe': True
+    },
+    {
+        'name': 'BPE-Transformer-Trained',
+        'embedder_class': BPETransformerEmbedder,
+        'bpe_model_path': os.path.join(repo_root, 'tokenization', 'vocabularies', 'bpe_tokenizer.json'),
+        'table_name': 'bpe-transformer',  # Actual table name in database
+        'vector_dim': 256,
+        'is_bpe': True
+    },
     {
         'name': 'BERT-MiniLM',
         'embedder_class': BertEmbedder,
