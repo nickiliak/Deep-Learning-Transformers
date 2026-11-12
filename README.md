@@ -10,19 +10,25 @@ This project compares different tokenization strategies (byte-level, character-l
 
 The pipeline generates embeddings for a document corpus using each model, stores them in a PostgreSQL database with pgvector, and provides tools to evaluate retrieval performance across tokenization strategies.
 
+**Current status:** the ByT5 pipeline is implemented and has been run end-to-end. The Canine embedder has a known import bug (see `NEXT_STEPS.md`) and hasn't been run through the full pipeline yet. The BERT/MiniLM embedder described above is planned but not yet implemented — see `NEXT_STEPS.md` for the up-to-date TODO list.
+
 ## Repository Structure
 
 ```
 pipeline/                    # Main embedding generation pipeline
-  └── pipeline.ipynb        # Notebook to generate and store embeddings
+  ├── complete_pipeline.py        # End-to-end pipeline script
+  ├── complete_pipeline.ipynb     # Same pipeline as a notebook
+  ├── run_all_embeddings.py       # Generate + store embeddings for all models
+  └── run_all_embeddings_csv.py   # Variant that reads/writes CSV corpora
 tokenization/
   ├── our_tokenizers/       # Embedder implementations
-  │   ├── ByT5/            # Byte-level tokenization
-  │   ├── Canine/          # Character-level tokenization
-  │   └── BPE/             # Subword tokenization (BERT)
-  └── evaluation/          # Tools to evaluate retrieval performance
-      ├── evaluate_retrieval.py  # Comprehensive comparison
-      └── query_demo.py          # Interactive search demo
+  │   ├── ByT5/             # Byte-level tokenization (implemented, tested)
+  │   ├── Canine/           # Character-level tokenization (known import bug)
+  │   └── BPE/              # Subword tokenization
+  └── evaluation/           # Tools to evaluate retrieval performance
+      ├── evaluation.py               # Recall@K comparison across embedders
+      └── tokenization_analysis.py    # Tokenizer-level comparison
+models/                      # LSTM/Transformer BPE training code (checkpoints gitignored)
 setup/
   ├── setup.py             # Downloads Natural Questions dataset
   └── docker-compose.yml   # PostgreSQL + pgvector database
@@ -107,7 +113,7 @@ To view logs: `docker-compose logs -f`
 
 ### Generate Embeddings
 
-Open `pipeline/pipeline.ipynb` in VS Code or Jupyter. The notebook allows you to:
+Open `pipeline/complete_pipeline.ipynb` in VS Code or Jupyter. The notebook allows you to:
 
 1. Select which embedder to use (ByT5, Canine, or BERT)
 2. Configure the model ID and vector dimensions
@@ -120,16 +126,16 @@ Run the pipeline separately for each model to populate the database with all thr
 
 After generating embeddings, use the evaluation tools:
 
-**Interactive Search** (test a single query):
-```bash
-cd tokenization/evaluation
-uv run query_demo.py "your search query here"
-```
-
 **Comprehensive Evaluation** (compare all models):
 ```bash
 cd tokenization/evaluation
-uv run evaluate_retrieval.py
+uv run evaluation.py
+```
+
+**Tokenizer-level comparison**:
+```bash
+cd tokenization/evaluation
+uv run tokenization_analysis.py
 ```
 
 This compares all three tokenization strategies using metrics like Recall@k, MRR (Mean Reciprocal Rank), and query latency.

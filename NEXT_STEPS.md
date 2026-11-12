@@ -37,10 +37,10 @@
 ---
 
 ## Execution Order
-1. Fix Canine bug (5 min)
-2. Implement BERT embedder (30 min)
-3. Run pipeline 3x for all models (2-3 hours)
-4. Run evaluation scripts (30 min)
-5. Enhanced analysis & write-up (3-4 hours)
+1. Fix Canine bug
+2. Implement BERT embedder
+3. Run pipeline 3x for all models
+4. Run evaluation scripts
+5. Enhanced analysis & write-up
 
 **Success = 3 working embedders + quantitative comparison + analysis**
