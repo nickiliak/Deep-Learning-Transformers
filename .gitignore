@@ -14,3 +14,5 @@ temp
 
 # Evaluation outputs
 tokenization/evaluation/*.csv
+# Model checkpoints (large, reproducible via training scripts)
+*.pt
