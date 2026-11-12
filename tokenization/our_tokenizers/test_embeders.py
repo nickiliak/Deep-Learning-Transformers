@@ -1,9 +1,8 @@
-from BPE.BPE_LSTM_embedding import BPELSTMEmbedder
-from Canine.Canine_embedding import CanineEmbedder
-from BPE.BPEpre import BPEPretrainedEmbedder
+from tokenization.our_tokenizers.BPE.BPE_LSTM_embedding import BPELSTMEmbedder
+from tokenization.our_tokenizers.Canine.Canine_embedding import CanineEmbedder
+from tokenization.our_tokenizers.BPE.BPEpre import BPEPretrainedEmbedder
 text = "A quick brown fox jumps over the lazy dog."
 
-#bpe = BPELSTMEmbedder("tokenization\\vocabularies\\bpe_tokenizer.json")
 bpe = BPEPretrainedEmbedder("roberta-base")
 canine = CanineEmbedder()
 

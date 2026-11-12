@@ -4,7 +4,7 @@ from tokenization.our_tokenizers.ByT5.ByT5_tokenization import ByT5Tokenizer
 
 
 def main():
-    sample = "Kalimera! This test string mixes Greek and English, emoji :), and numbers 123."
+    sample = "Καλημέρα! This test string mixes Greek and English, emoji 🙂, and numbers 123."
 
     # ---- BPE ----
     print("=== Custom BPE ===")
